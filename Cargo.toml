@@ -7,3 +7,4 @@ description = "An embedded-hal driver for the ICM-42670 accelerometer"
 license     = "MIT OR Apache-2.0"
 
 [dependencies]
+embedded-hal = "0.2"
