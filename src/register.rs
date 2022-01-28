@@ -1,5 +1,24 @@
 #![allow(non_camel_case_types)]
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum RegisterBank {
+    MReg1,
+    MReg2,
+    MReg3,
+}
+
+impl RegisterBank {
+    pub fn blk_sel(self) -> u8 {
+        use RegisterBank::*;
+
+        match self {
+            MReg1 => 0x00,
+            MReg2 => 0x28,
+            MReg3 => 0x50,
+        }
+    }
+}
+
 pub(crate) trait Register {
     /// Get the address of the register
     fn addr(&self) -> u8;
