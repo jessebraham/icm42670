@@ -1,0 +1,9 @@
+[package]
+name        = "icm42670"
+version     = "0.1.0"
+authors     = ["Jesse Braham <jesse@beta7.io>"]
+edition     = "2021"
+description = "An embedded-hal driver for the ICM-42670 accelerometer"
+license     = "MIT OR Apache-2.0"
+
+[dependencies]
