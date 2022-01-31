@@ -1,5 +1,8 @@
 #![allow(non_camel_case_types)]
 
+// All reads and writes actually go through User Bank 0, and the remaining banks
+// are accessed via this bank; as such, User Bank 0 has been omitted, given that
+// we are not actually able to "select" it.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum RegisterBank {
     MReg1,
@@ -8,13 +11,12 @@ pub(crate) enum RegisterBank {
 }
 
 impl RegisterBank {
+    /// The block selection value for a given register bank
     pub fn blk_sel(self) -> u8 {
-        use RegisterBank::*;
-
         match self {
-            MReg1 => 0x00,
-            MReg2 => 0x28,
-            MReg3 => 0x50,
+            RegisterBank::MReg1 => 0x00,
+            RegisterBank::MReg2 => 0x28,
+            RegisterBank::MReg3 => 0x50,
         }
     }
 }
@@ -137,8 +139,9 @@ impl Register for Bank0 {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Bank1 {
+pub(crate) enum Mreg1 {
     TMST_CONFIG1    = 0x00,
     FIFO_CONFIG5    = 0x01,
     FIFO_CONFIG6    = 0x02,
@@ -182,24 +185,22 @@ pub(crate) enum Bank1 {
     APEX_CONFIG12   = 0x67,
 }
 
-impl Register for Bank1 {
+impl Register for Mreg1 {
     fn addr(&self) -> u8 {
         *self as u8
     }
 
     fn read_only(&self) -> bool {
-        use Bank1::*;
-
-        matches!(self, ST_STATUS1 | ST_STATUS2)
+        matches!(self, Mreg1::ST_STATUS1 | Mreg1::ST_STATUS2)
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Bank2 {
+pub(crate) enum Mreg2 {
     OTP_CTRL7 = 0x06,
 }
 
-impl Register for Bank2 {
+impl Register for Mreg2 {
     fn addr(&self) -> u8 {
         *self as u8
     }
@@ -210,7 +211,7 @@ impl Register for Bank2 {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Bank3 {
+pub(crate) enum Mreg3 {
     XA_ST_DATA = 0x00,
     YA_ST_DATA = 0x01,
     ZA_ST_DATA = 0x02,
@@ -219,7 +220,7 @@ pub(crate) enum Bank3 {
     ZG_ST_DATA = 0x05,
 }
 
-impl Register for Bank3 {
+impl Register for Mreg3 {
     fn addr(&self) -> u8 {
         *self as u8
     }
