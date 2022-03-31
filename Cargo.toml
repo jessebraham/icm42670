@@ -1,10 +1,15 @@
 [package]
-name        = "icm42670"
-version     = "0.1.0"
-authors     = ["Jesse Braham <jesse@beta7.io>"]
-edition     = "2021"
-description = "An embedded-hal driver for the ICM-42670 accelerometer"
-license     = "MIT OR Apache-2.0"
+name         = "icm42670"
+version      = "0.1.0"
+authors      = ["Jesse Braham <jesse@beta7.io>"]
+edition      = "2021"
+rust-version = "1.56"
+description  = "An embedded-hal driver for the ICM-42670 6-axis IMU"
+repository   = "https://github.com/jessebraham/icm42670"
+license      = "MIT OR Apache-2.0"
+keywords     = ["accelerometer", "gyro", "imu"]
+categories   = ["aerospace", "embedded", "hardware-support", "no-std"]
 
 [dependencies]
-embedded-hal = "0.2"
+accelerometer = "0.12"
+embedded-hal  = "0.2"

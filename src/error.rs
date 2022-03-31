@@ -1,8 +1,9 @@
+/// Errors which may occur when interacting with the device.
 #[derive(Debug)]
 pub enum Error<E> {
     /// Pass on error caused when using the bus itself
     Raw(E),
-    /// The chip at the specified address is not reporting the corrcet self
+    /// The chip at the specified address is not reporting the correct self
     /// identification code.
     ///
     /// For I²C this is most likely if the ID change jumper is in the wrong
