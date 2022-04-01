@@ -1,5 +1,13 @@
 use crate::error::Error;
 
+pub(crate) trait Bitfield {
+    const BITMASK: u8;
+
+    /// Bit value of a discriminant, shifted to the correct position if
+    /// necessary
+    fn bits(self) -> u8;
+}
+
 /// I²C slave addresses, determined by the logic level of pin `AP_AD0`
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Address {
@@ -23,19 +31,6 @@ pub enum AccelRange {
 }
 
 impl AccelRange {
-    /// Attempt to create a discriminant from the provided value
-    pub fn try_from<E>(value: u8) -> Result<Self, Error<E>> {
-        use AccelRange::*;
-
-        match value {
-            0 => Ok(G16),
-            1 => Ok(G8),
-            2 => Ok(G4),
-            3 => Ok(G2),
-            _ => Err(Error::InvalidDiscriminant),
-        }
-    }
-
     /// Sensitivity scale factor
     pub fn scale_factor(&self) -> f32 {
         use AccelRange::*;
@@ -50,9 +45,34 @@ impl AccelRange {
     }
 }
 
+impl Bitfield for AccelRange {
+    const BITMASK: u8 = 0b0110_0000;
+
+    fn bits(self) -> u8 {
+        // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
+        (self as u8) << 5
+    }
+}
+
 impl Default for AccelRange {
     fn default() -> Self {
         Self::G16
+    }
+}
+
+impl TryFrom<u8> for AccelRange {
+    type Error = Error<()>;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use AccelRange::*;
+
+        match value {
+            0 => Ok(G16),
+            1 => Ok(G8),
+            2 => Ok(G4),
+            3 => Ok(G2),
+            _ => Err(Error::InvalidDiscriminant),
+        }
     }
 }
 
@@ -70,19 +90,6 @@ pub enum GyroRange {
 }
 
 impl GyroRange {
-    /// Attempt to create a discriminant from the provided value
-    pub fn try_from<E>(value: u8) -> Result<Self, Error<E>> {
-        use GyroRange::*;
-
-        match value {
-            0 => Ok(Deg2000),
-            1 => Ok(Deg1000),
-            2 => Ok(Deg500),
-            3 => Ok(Deg250),
-            _ => Err(Error::InvalidDiscriminant),
-        }
-    }
-
     /// Sensitivity scale factor
     pub fn scale_factor(&self) -> f32 {
         use GyroRange::*;
@@ -97,9 +104,34 @@ impl GyroRange {
     }
 }
 
+impl Bitfield for GyroRange {
+    const BITMASK: u8 = 0b0110_0000;
+
+    fn bits(self) -> u8 {
+        // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
+        (self as u8) << 5
+    }
+}
+
 impl Default for GyroRange {
     fn default() -> Self {
         Self::Deg2000
+    }
+}
+
+impl TryFrom<u8> for GyroRange {
+    type Error = Error<()>;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use GyroRange::*;
+
+        match value {
+            0 => Ok(Deg2000),
+            1 => Ok(Deg1000),
+            2 => Ok(Deg500),
+            3 => Ok(Deg250),
+            _ => Err(Error::InvalidDiscriminant),
+        }
     }
 }
 
@@ -120,15 +152,26 @@ pub enum PowerMode {
     SixAxisLowNoise = 0b1111,
 }
 
+impl Bitfield for PowerMode {
+    const BITMASK: u8 = 0b0000_1111;
+
+    fn bits(self) -> u8 {
+        // `GYRO_MODE` occupies bits 3:2 in the register
+        // `ACCEL_MODE` occupies bits 1:0 in the register
+        self as u8
+    }
+}
+
 impl Default for PowerMode {
     fn default() -> Self {
         PowerMode::Sleep
     }
 }
 
-impl PowerMode {
-    /// Attempt to create a discriminant from the provided value
-    pub fn try_from<E>(value: u8) -> Result<Self, Error<E>> {
+impl TryFrom<u8> for PowerMode {
+    type Error = Error<()>;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
         use PowerMode::*;
 
         match value {

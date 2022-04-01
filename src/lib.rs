@@ -27,7 +27,10 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 
-use crate::register::{Bank0, Mreg1, Mreg2, Mreg3, Register, RegisterBank};
+use crate::{
+    config::Bitfield,
+    register::{Bank0, Mreg1, Mreg2, Mreg3, Register, RegisterBank},
+};
 pub use crate::{
     config::{AccelRange, Address, GyroRange, PowerMode},
     error::Error,
@@ -54,6 +57,7 @@ pub struct Icm42670<I2C> {
 impl<I2C, E> Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
+    Error<E>: From<Error<()>>,
 {
     /// Unique device identifier for the ICM-42670
     pub const WHO_AM_I: u8 = 0x67;
@@ -114,36 +118,36 @@ where
     }
 
     /// Set the power mode of the IMU
-    pub fn set_power_mode(&mut self, _mode: PowerMode) -> Result<(), Error<E>> {
-        todo!()
+    pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::PWR_MGMT0, mode.bits(), PowerMode::BITMASK)
     }
 
     /// Return the currently configured accelerometer range
     pub fn accel_range(&mut self) -> Result<AccelRange, Error<E>> {
         // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
         let fs_sel = self.read_reg(&Bank0::ACCEL_CONFIG0)? >> 5;
+        let range = AccelRange::try_from(fs_sel)?;
 
-        AccelRange::try_from(fs_sel.into())
+        Ok(range)
     }
 
     /// Set the range of the accelerometer
     pub fn set_accel_range(&mut self, range: AccelRange) -> Result<(), Error<E>> {
-        // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
-        self.update_reg(&Bank0::ACCEL_CONFIG0, range as u8, 0b01100000)
+        self.update_reg(&Bank0::ACCEL_CONFIG0, range.bits(), AccelRange::BITMASK)
     }
 
     /// Return the currently configured gyroscope range
     pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
         let fs_sel = self.read_reg(&Bank0::GYRO_CONFIG0)? >> 5;
+        let range = GyroRange::try_from(fs_sel)?;
 
-        GyroRange::try_from(fs_sel.into())
+        Ok(range)
     }
 
     /// Set the range of the gyro
     pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Error<E>> {
-        // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
-        self.update_reg(&Bank0::GYRO_CONFIG0, range as u8, 0b01100000)
+        self.update_reg(&Bank0::GYRO_CONFIG0, range.bits(), GyroRange::BITMASK)
     }
 
     // -----------------------------------------------------------------------
@@ -236,12 +240,12 @@ where
             Err(Error::WriteToReadOnly)
         } else {
             self.i2c.write(self.address as u8, &[reg.addr(), value])?;
-
             Ok(())
         }
     }
 
     /// Update the register at the provided address.
+    ///
     /// Rather than overwriting any active bits in the register, we first read
     /// in its current value and then update it accordingly using the given
     /// value and mask before writing back the desired value.
@@ -249,9 +253,7 @@ where
         let current = self.read_reg(reg)?;
         let value = (current & !mask) | (value & mask);
 
-        self.write_reg(reg, value)?;
-
-        Ok(())
+        self.write_reg(reg, value)
     }
 }
 
@@ -259,6 +261,7 @@ impl<I2C, E> Accelerometer for Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
     E: Debug,
+    Error<E>: From<Error<()>>,
 {
     type Error = Error<E>;
 
@@ -284,6 +287,7 @@ impl<I2C, E> RawAccelerometer<U16x3> for Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
     E: Debug,
+    Error<E>: From<Error<()>>,
 {
     type Error = Error<E>;
 
