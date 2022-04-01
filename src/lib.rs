@@ -51,17 +51,31 @@ pub enum Address {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccelRange {
     /// ±2G
-    G2,
+    G2  = 3,
     /// ±4G
-    G4,
+    G4  = 2,
     /// ±8G
-    G8,
+    G8  = 1,
     /// ±16G
-    G16,
+    G16 = 0,
 }
 
 impl AccelRange {
-    fn as_float(&self) -> f32 {
+    /// Attempt to create a discriminant from the provided value
+    pub fn try_from<E>(value: u8) -> Result<Self, Error<E>> {
+        use AccelRange::*;
+
+        match value {
+            0 => Ok(G16),
+            1 => Ok(G8),
+            2 => Ok(G4),
+            3 => Ok(G2),
+            _ => Err(Error::InvalidDiscriminant),
+        }
+    }
+
+    /// Sensitivity scale factor
+    pub fn scale_factor(&self) -> f32 {
         use AccelRange::*;
 
         // Values taken from Table 2 of the data sheet
@@ -78,17 +92,31 @@ impl AccelRange {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GyroRange {
     /// ±250 deg/sec
-    Deg250,
+    Deg250  = 3,
     /// ±500 deg/sec
-    Deg500,
+    Deg500  = 2,
     /// ±1000 deg/sec
-    Deg1000,
+    Deg1000 = 1,
     /// ±2000 deg/sec
-    Deg2000,
+    Deg2000 = 0,
 }
 
 impl GyroRange {
-    fn as_float(&self) -> f32 {
+    /// Attempt to create a discriminant from the provided value
+    pub fn try_from<E>(value: u8) -> Result<Self, Error<E>> {
+        use GyroRange::*;
+
+        match value {
+            0 => Ok(Deg2000),
+            1 => Ok(Deg1000),
+            2 => Ok(Deg500),
+            3 => Ok(Deg250),
+            _ => Err(Error::InvalidDiscriminant),
+        }
+    }
+
+    /// Sensitivity scale factor
+    pub fn scale_factor(&self) -> f32 {
         use GyroRange::*;
 
         // Values taken from Table 1 of the data sheet
@@ -166,27 +194,60 @@ where
         Ok(U16x3::new(x, y, z))
     }
 
+    pub fn gyro_norm(&mut self) -> Result<F32x3, Error<E>> {
+        todo!()
+    }
+
+    /// Read the built-in temperature sensor and return the value in degrees
+    /// centigrade
+    pub fn temperature(&mut self) -> Result<f32, Error<E>> {
+        let raw = self.temperature_raw()? as f32;
+        let deg = (raw / 128.0) + 25.0;
+
+        Ok(deg)
+    }
+
     /// Read the raw data from the built-in temperature sensor
     pub fn temperature_raw(&mut self) -> Result<u16, Error<E>> {
         self.read_reg_u16(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0)
     }
 
+    /// Return the currently configured power mode
+    pub fn power_mode(&mut self) -> Result<PowerMode, Error<E>> {
+        todo!()
+    }
+
     /// Set the power mode of the IMU
     pub fn set_power_mode(&mut self, _mode: PowerMode) -> Result<(), Error<E>> {
-        // TODO: implement me
-        Ok(())
+        todo!()
     }
 
-    /// Set the range of the Accelerometer
-    pub fn set_accel_range(&mut self, _range: AccelRange) -> Result<(), Error<E>> {
-        // TODO: implement me
-        Ok(())
+    /// Return the currently configured accelerometer range
+    pub fn accel_range(&mut self) -> Result<AccelRange, Error<E>> {
+        // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
+        let fs_sel = self.read_reg(&Bank0::ACCEL_CONFIG0)? >> 5;
+
+        AccelRange::try_from(fs_sel.into())
     }
 
-    /// Set the range of the Gyro
-    pub fn set_gyro_range(&mut self, _range: GyroRange) -> Result<(), Error<E>> {
-        // TODO: implement me
-        Ok(())
+    /// Set the range of the accelerometer
+    pub fn set_accel_range(&mut self, range: AccelRange) -> Result<(), Error<E>> {
+        // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
+        self.update_reg(&Bank0::ACCEL_CONFIG0, range as u8, 0b01100000)
+    }
+
+    /// Return the currently configured gyroscope range
+    pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
+        // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
+        let fs_sel = self.read_reg(&Bank0::GYRO_CONFIG0)? >> 5;
+
+        GyroRange::try_from(fs_sel.into())
+    }
+
+    /// Set the range of the gyro
+    pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Error<E>> {
+        // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
+        self.update_reg(&Bank0::GYRO_CONFIG0, range as u8, 0b01100000)
     }
 
     // -----------------------------------------------------------------------

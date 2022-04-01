@@ -15,6 +15,9 @@ pub enum Error<E> {
     BankOutOfRange,
     /// Attempted to write to a read-only register
     WriteToReadOnly,
+    /// Attempted to create an AccelRange or GyroRange enum from an invalid
+    /// discriminant
+    InvalidDiscriminant,
 }
 
 impl<E> From<E> for Error<E> {
