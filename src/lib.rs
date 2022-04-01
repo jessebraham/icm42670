@@ -1,3 +1,16 @@
+//! An [embedded-hal] driver for the ICM-42670 6-axis IMU from InvenSense.
+//!
+//! The ICM-42670 combines a 3-axis accelerometer with a 3-axis gyroscope into a
+//! single package. It has a configurable host interface which supports I²C,
+//! SPI, and I3C communications. Presently this driver only supports using the
+//! I²C interface.
+//!
+//! For additional information about this device please refer to the
+//! [datasheet].
+//!
+//! [embedded-hal]: https://docs.rs/embedded-hal/latest/embedded_hal/
+//! [datasheet]: https://3cfeqx1hf82y3xcoull08ihx-wpengine.netdna-ssl.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf
+
 #![no_std]
 
 use core::fmt::Debug;
@@ -8,7 +21,6 @@ use accelerometer::{
     vector::{F32x3, U16x3},
     Accelerometer,
     RawAccelerometer,
-    Vector,
 };
 use embedded_hal::blocking::{
     delay::DelayUs,
@@ -21,21 +33,21 @@ use crate::register::{Bank0, Mreg1, Mreg2, Mreg3, Register, RegisterBank};
 mod error;
 mod register;
 
-/// The prelude
+/// Re-export any traits which may be required by end users
 pub mod prelude {
-    pub use accelerometer::{Accelerometer as _, RawAccelerometer as _, Vector as _};
+    pub use accelerometer::{Accelerometer as _, RawAccelerometer as _};
 }
 
 /// I²C slave addresses, determined by the logic level of pin `AP_AD0`
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Address {
-    /// `AP_AD0` == 0
+    /// `AP_AD0` pin == 0
     Primary   = 0x68,
-    /// `AP_AD0` == 1
+    /// `AP_AD0` pin == 1
     Secondary = 0x69,
 }
 
-/// Enum describing possible ranges of the Accelerometer
+/// Configurable ranges of the Accelerometer
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccelRange {
     /// ±2G
@@ -62,7 +74,7 @@ impl AccelRange {
     }
 }
 
-/// Enum describing possible ranges of the Gyro
+/// Configurable ranges of the Gyroscope
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GyroRange {
     /// ±250 deg/sec
@@ -89,15 +101,21 @@ impl GyroRange {
     }
 }
 
-/// Enum describing the possible power modes of the IMU
+/// Configurable power modes of the IMU
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PowerMode {
-    Sleep,           // GYRO: off       ACCEL: off
-    Standby,         // GYRO: drive on  ACCEL: off
-    AccelLowPower,   // GYRO: off       ACCEL: duty-cycled
-    AccelLowNoise,   // GYRO: off       ACCEL: on
-    GyroLowNoise,    // GYRO: on        ACCEL: off
-    SixAxisLowNoise, // GYRO: on        ACCEL: on
+    /// Accelerometer: OFF, Gyroscope: OFF
+    Sleep,
+    /// Accelerometer: OFF, Gyroscope: DRIVE ON
+    Standby,
+    /// Accelerometer: DUTY-CYCLED, Gyroscope: OFF
+    AccelLowPower,
+    /// Accelerometer: ON, Gyroscope: OFF
+    AccelLowNoise,
+    /// Accelerometer: OFF, Gyroscope: ON
+    GyroLowNoise,
+    /// Accelerometer: ON, Gyroscope: ON
+    SixAxisLowNoise,
 }
 
 /// ICM-42670 driver
