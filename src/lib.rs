@@ -15,6 +15,7 @@
 
 use core::fmt::Debug;
 
+pub use accelerometer;
 use accelerometer::{
     error::Error as AccelerometerError,
     vector::{F32x3, I16x3},
@@ -28,11 +29,12 @@ use embedded_hal::blocking::{
 
 use crate::{
     config::Bitfield,
+    error::SensorError,
     register::{Bank0, Register, RegisterBank},
 };
 pub use crate::{
-    config::{AccelRange, Address, GyroRange, PowerMode},
-    error::{Error, SensorError},
+    config::{AccelOdr, AccelRange, Address, GyroOdr, GyroRange, PowerMode},
+    error::Error,
 };
 
 mod config;
@@ -61,6 +63,7 @@ where
     /// Unique device identifier for the ICM-42670
     pub const WHO_AM_I: u8 = 0x67;
 
+    /// Instantiate a new instance of the driver and initialize the device
     pub fn new(i2c: I2C, address: Address) -> Result<Self, Error<E>> {
         let mut me = Self { i2c, address };
 
@@ -97,6 +100,7 @@ where
         self.update_reg(&Bank0::SIGNAL_PATH_RESET, 0x10, 0b0001_0000)
     }
 
+    /// Return the normalized gyro data for each of the three axes
     pub fn gyro_norm(&mut self) -> Result<F32x3, Error<E>> {
         let range = self.gyro_range()?;
         let scale = range.scale_factor();
@@ -175,6 +179,34 @@ where
     /// Set the range of the gyro
     pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Error<E>> {
         self.update_reg(&Bank0::GYRO_CONFIG0, range.bits(), GyroRange::BITMASK)
+    }
+
+    /// Return the currently configured output data rate for the accelerometer
+    pub fn accel_odr(&mut self) -> Result<AccelOdr, Error<E>> {
+        // `ACCEL_ODR` occupies bits 3:0 in the register
+        let odr = self.read_reg(&Bank0::ACCEL_CONFIG0)? & 0xF;
+        let odr = AccelOdr::try_from(odr)?;
+
+        Ok(odr)
+    }
+
+    /// Set the output data rate of the accelerometer
+    pub fn set_accel_odr(&mut self, odr: AccelOdr) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::ACCEL_CONFIG0, odr.bits(), AccelOdr::BITMASK)
+    }
+
+    /// Return the currently configured output data rate for the gyroscope
+    pub fn gyro_odr(&mut self) -> Result<GyroOdr, Error<E>> {
+        // `GYRO_ODR` occupies bits 3:0 in the register
+        let odr = self.read_reg(&Bank0::GYRO_CONFIG0)? & 0xF;
+        let odr = GyroOdr::try_from(odr)?;
+
+        Ok(odr)
+    }
+
+    /// Set the output data rate of the gyroscope
+    pub fn set_gyro_odr(&mut self, odr: GyroOdr) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::GYRO_CONFIG0, odr.bits(), GyroOdr::BITMASK)
     }
 
     // -----------------------------------------------------------------------
@@ -311,7 +343,10 @@ where
     }
 
     fn sample_rate(&mut self) -> Result<f32, AccelerometerError<Self::Error>> {
-        todo!()
+        let odr = self.accel_odr()?;
+        let rate = odr.as_f32();
+
+        Ok(rate)
     }
 }
 

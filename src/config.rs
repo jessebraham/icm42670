@@ -185,3 +185,161 @@ impl TryFrom<u8> for PowerMode {
         }
     }
 }
+
+/// Accelerometer ODR selection values
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccelOdr {
+    /// 1.6 kHz (LN mode)
+    Hz1600   = 0b0101,
+    /// 800 Hz (LN mode
+    Hz800    = 0b0110,
+    /// 400 Hz (LP or LN mode)
+    Hz400    = 0b0111,
+    /// 200 Hz (LP or LN mode)
+    Hz200    = 0b1000,
+    /// 100 Hz (LP or LN mode)
+    Hz100    = 0b1001,
+    /// 50 Hz (LP or LN mode)
+    Hz50     = 0b1010,
+    /// 25 Hz (LP or LN mode)
+    Hz25     = 0b1011,
+    /// 12.5 Hz (LP or LN mode)
+    Hz12_5   = 0b1100,
+    /// 6.25 Hz (LP mode)
+    Hz6_25   = 0b1101,
+    /// 3.125 Hz (LP mode)
+    Hz3_125  = 0b1110,
+    /// 1.5625 Hz (LP mode
+    Hz1_5625 = 0b1111,
+}
+
+impl AccelOdr {
+    pub fn as_f32(self) -> f32 {
+        use AccelOdr::*;
+
+        match self {
+            Hz1600 => 1600.0,
+            Hz800 => 800.0,
+            Hz400 => 400.0,
+            Hz200 => 200.0,
+            Hz100 => 100.0,
+            Hz50 => 50.0,
+            Hz25 => 25.0,
+            Hz12_5 => 12.5,
+            Hz6_25 => 6.25,
+            Hz3_125 => 3.125,
+            Hz1_5625 => 1.5625,
+        }
+    }
+}
+
+impl Bitfield for AccelOdr {
+    const BITMASK: u8 = 0b0000_1111;
+
+    fn bits(self) -> u8 {
+        // `ACCEL_ODR` occupies bits 3:0 in the register
+        self as u8
+    }
+}
+
+impl Default for AccelOdr {
+    fn default() -> Self {
+        Self::Hz800
+    }
+}
+
+impl TryFrom<u8> for AccelOdr {
+    type Error = SensorError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use AccelOdr::*;
+
+        match value {
+            0b0101 => Ok(Hz1600),
+            0b0110 => Ok(Hz800),
+            0b0111 => Ok(Hz400),
+            0b1000 => Ok(Hz200),
+            0b1001 => Ok(Hz100),
+            0b1010 => Ok(Hz50),
+            0b1011 => Ok(Hz25),
+            0b1100 => Ok(Hz12_5),
+            0b1101 => Ok(Hz6_25),
+            0b1110 => Ok(Hz3_125),
+            0b1111 => Ok(Hz1_5625),
+            _ => Err(SensorError::InvalidDiscriminant),
+        }
+    }
+}
+
+/// Gyroscope ODR selection values
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum GyroOdr {
+    /// 1.6k Hz
+    Hz1600 = 0b0101,
+    /// 800 Hz
+    Hz800  = 0b0110,
+    /// 400 Hz
+    Hz400  = 0b0111,
+    /// 200 Hz
+    Hz200  = 0b1000,
+    /// 100 Hz
+    Hz100  = 0b1001,
+    /// 50 Hz
+    Hz50   = 0b1010,
+    /// 25 Hz
+    Hz25   = 0b1011,
+    /// 12.5 Hz
+    Hz12_5 = 0b1100,
+}
+
+impl GyroOdr {
+    pub fn as_f32(self) -> f32 {
+        use GyroOdr::*;
+
+        match self {
+            Hz1600 => 1600.0,
+            Hz800 => 800.0,
+            Hz400 => 400.0,
+            Hz200 => 200.0,
+            Hz100 => 100.0,
+            Hz50 => 50.0,
+            Hz25 => 25.0,
+            Hz12_5 => 12.5,
+        }
+    }
+}
+
+impl Bitfield for GyroOdr {
+    const BITMASK: u8 = 0b0000_1111;
+
+    fn bits(self) -> u8 {
+        // `GYRO_ODR` occupies bits 3:0 in the register
+        self as u8
+    }
+}
+
+impl Default for GyroOdr {
+    fn default() -> Self {
+        Self::Hz800
+    }
+}
+
+impl TryFrom<u8> for GyroOdr {
+    type Error = SensorError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use GyroOdr::*;
+
+        match value {
+            0b0101 => Ok(Hz1600),
+            0b0110 => Ok(Hz800),
+            0b0111 => Ok(Hz400),
+            0b1000 => Ok(Hz200),
+            0b1001 => Ok(Hz100),
+            0b1010 => Ok(Hz50),
+            0b1011 => Ok(Hz25),
+            0b1100 => Ok(Hz12_5),
+            _ => Err(SensorError::InvalidDiscriminant),
+        }
+    }
+}
