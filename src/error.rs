@@ -1,8 +1,15 @@
-/// Errors which may occur when interacting with the device.
+/// Any type of error which may occur while interacting with the device
 #[derive(Debug)]
 pub enum Error<E> {
-    /// Pass on error caused when using the bus itself
-    Raw(E),
+    /// Some error originating from the communication bus
+    BusError(E),
+    /// Some error resulting from interacting with the device
+    SensorError(SensorError),
+}
+
+/// Any type of error specific to this device
+#[derive(Debug)]
+pub enum SensorError {
     /// The chip at the specified address is not reporting the correct self
     /// identification code.
     ///
@@ -20,8 +27,8 @@ pub enum Error<E> {
     InvalidDiscriminant,
 }
 
-impl<E> From<E> for Error<E> {
-    fn from(err: E) -> Self {
-        Error::Raw(err)
+impl<E> From<SensorError> for Error<E> {
+    fn from(err: SensorError) -> Self {
+        Error::SensorError(err)
     }
 }

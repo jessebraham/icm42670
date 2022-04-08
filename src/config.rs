@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::SensorError;
 
 pub(crate) trait Bitfield {
     const BITMASK: u8;
@@ -61,7 +61,7 @@ impl Default for AccelRange {
 }
 
 impl TryFrom<u8> for AccelRange {
-    type Error = Error<()>;
+    type Error = SensorError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         use AccelRange::*;
@@ -71,7 +71,7 @@ impl TryFrom<u8> for AccelRange {
             1 => Ok(G8),
             2 => Ok(G4),
             3 => Ok(G2),
-            _ => Err(Error::InvalidDiscriminant),
+            _ => Err(SensorError::InvalidDiscriminant),
         }
     }
 }
@@ -120,7 +120,7 @@ impl Default for GyroRange {
 }
 
 impl TryFrom<u8> for GyroRange {
-    type Error = Error<()>;
+    type Error = SensorError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         use GyroRange::*;
@@ -130,7 +130,7 @@ impl TryFrom<u8> for GyroRange {
             1 => Ok(Deg1000),
             2 => Ok(Deg500),
             3 => Ok(Deg250),
-            _ => Err(Error::InvalidDiscriminant),
+            _ => Err(SensorError::InvalidDiscriminant),
         }
     }
 }
@@ -169,7 +169,7 @@ impl Default for PowerMode {
 }
 
 impl TryFrom<u8> for PowerMode {
-    type Error = Error<()>;
+    type Error = SensorError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         use PowerMode::*;
@@ -181,7 +181,7 @@ impl TryFrom<u8> for PowerMode {
             0b0011 => Ok(AccelLowNoise),
             0b1100 => Ok(GyroLowNoise),
             0b1111 => Ok(SixAxisLowNoise),
-            _ => Err(Error::InvalidDiscriminant),
+            _ => Err(SensorError::InvalidDiscriminant),
         }
     }
 }

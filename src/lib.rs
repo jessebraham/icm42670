@@ -15,7 +15,6 @@
 
 use core::fmt::Debug;
 
-pub use accelerometer;
 use accelerometer::{
     error::Error as AccelerometerError,
     vector::{F32x3, I16x3},
@@ -33,7 +32,7 @@ use crate::{
 };
 pub use crate::{
     config::{AccelRange, Address, GyroRange, PowerMode},
-    error::Error,
+    error::{Error, SensorError},
 };
 
 mod config;
@@ -57,6 +56,7 @@ pub struct Icm42670<I2C> {
 impl<I2C, E> Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
+    E: Debug,
 {
     /// Unique device identifier for the ICM-42670
     pub const WHO_AM_I: u8 = 0x67;
@@ -67,7 +67,7 @@ where
         // Verify that the device has the correct ID before continuing. If the ID does
         // not match the expected value then it is likely the wrong chip is connected.
         if me.device_id()? != Self::WHO_AM_I {
-            return Err(Error::BadChip);
+            return Err(Error::SensorError(SensorError::BadChip));
         }
 
         // Make sure that any configuration has been restored to the default values when
@@ -139,7 +139,7 @@ where
         //  `GYRO_MODE` occupies bits 3:2 in the register
         // `ACCEL_MODE` occupies bits 1:0 in the register
         let bits = self.read_reg(&Bank0::PWR_MGMT0)? & 0xF;
-        let mode = PowerMode::try_from(bits).unwrap(); // FIXME
+        let mode = PowerMode::try_from(bits)?;
 
         Ok(mode)
     }
@@ -153,7 +153,7 @@ where
     pub fn accel_range(&mut self) -> Result<AccelRange, Error<E>> {
         // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
         let fs_sel = self.read_reg(&Bank0::ACCEL_CONFIG0)? >> 5;
-        let range = AccelRange::try_from(fs_sel).unwrap(); // FIXME
+        let range = AccelRange::try_from(fs_sel)?;
 
         Ok(range)
     }
@@ -167,7 +167,7 @@ where
     pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
         let fs_sel = self.read_reg(&Bank0::GYRO_CONFIG0)? >> 5;
-        let range = GyroRange::try_from(fs_sel).unwrap(); // FIXME
+        let range = GyroRange::try_from(fs_sel)?;
 
         Ok(range)
     }
@@ -244,7 +244,8 @@ where
     fn read_reg(&mut self, reg: &dyn Register) -> Result<u8, Error<E>> {
         let mut buffer = [0u8];
         self.i2c
-            .write_read(self.address as u8, &[reg.addr()], &mut buffer)?;
+            .write_read(self.address as u8, &[reg.addr()], &mut buffer)
+            .map_err(|e| Error::BusError(e))?;
 
         Ok(buffer[0])
     }
@@ -266,9 +267,11 @@ where
     /// Set a register at the provided address to a given value.
     fn write_reg(&mut self, reg: &dyn Register, value: u8) -> Result<(), Error<E>> {
         if reg.read_only() {
-            Err(Error::WriteToReadOnly)
+            Err(Error::SensorError(SensorError::WriteToReadOnly))
         } else {
-            self.i2c.write(self.address as u8, &[reg.addr(), value])?;
+            self.i2c
+                .write(self.address as u8, &[reg.addr(), value])
+                .map_err(|e| Error::BusError(e))?;
             Ok(())
         }
     }
