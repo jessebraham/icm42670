@@ -18,7 +18,7 @@ use core::fmt::Debug;
 pub use accelerometer;
 use accelerometer::{
     error::Error as AccelerometerError,
-    vector::{F32x3, U16x3},
+    vector::{F32x3, I16x3},
     Accelerometer,
     RawAccelerometer,
 };
@@ -29,7 +29,7 @@ use embedded_hal::blocking::{
 
 use crate::{
     config::Bitfield,
-    register::{Bank0, Mreg1, Mreg2, Mreg3, Register, RegisterBank},
+    register::{Bank0, Register, RegisterBank},
 };
 pub use crate::{
     config::{AccelRange, Address, GyroRange, PowerMode},
@@ -57,20 +57,27 @@ pub struct Icm42670<I2C> {
 impl<I2C, E> Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
-    Error<E>: From<Error<()>>,
 {
     /// Unique device identifier for the ICM-42670
     pub const WHO_AM_I: u8 = 0x67;
 
     pub fn new(i2c: I2C, address: Address) -> Result<Self, Error<E>> {
         let mut me = Self { i2c, address };
+
+        // Verify that the device has the correct ID before continuing. If the ID does
+        // not match the expected value then it is likely the wrong chip is connected.
         if me.device_id()? != Self::WHO_AM_I {
             return Err(Error::BadChip);
         }
 
+        // Make sure that any configuration has been restored to the default values when
+        // initializing the driver.
+        me.set_accel_range(AccelRange::default())?;
+        me.set_gyro_range(GyroRange::default())?;
+
+        // The IMU uses `PowerMode::Sleep` by default, which disables both the accel and
+        // gyro, so we enable them both during driver initialization.
         me.set_power_mode(PowerMode::SixAxisLowNoise)?;
-        me.set_accel_range(AccelRange::G4)?;
-        me.set_gyro_range(GyroRange::Deg2000)?;
 
         Ok(me)
     }
@@ -85,17 +92,32 @@ where
         self.read_reg(&Bank0::WHO_AM_I)
     }
 
-    /// Read the raw gyro data for each of the three axes
-    pub fn gyro_raw(&mut self) -> Result<U16x3, Error<E>> {
-        let x = self.read_reg_u16(&Bank0::GYRO_DATA_X1, &Bank0::GYRO_DATA_X0)?;
-        let y = self.read_reg_u16(&Bank0::GYRO_DATA_Y1, &Bank0::GYRO_DATA_Y0)?;
-        let z = self.read_reg_u16(&Bank0::GYRO_DATA_Z1, &Bank0::GYRO_DATA_Z0)?;
-
-        Ok(U16x3::new(x, y, z))
+    /// Perform a software-reset on the device
+    pub fn soft_reset(&mut self) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::SIGNAL_PATH_RESET, 0x10, 0b0001_0000)
     }
 
     pub fn gyro_norm(&mut self) -> Result<F32x3, Error<E>> {
-        todo!()
+        let range = self.gyro_range()?;
+        let scale = range.scale_factor();
+
+        // Scale the raw Gyroscope data using the appropriate factor based on the
+        // configured range.
+        let raw = self.gyro_raw()?;
+        let x = raw.x as f32 / scale;
+        let y = raw.y as f32 / scale;
+        let z = raw.z as f32 / scale;
+
+        Ok(F32x3::new(x, y, z))
+    }
+
+    /// Read the raw gyro data for each of the three axes
+    pub fn gyro_raw(&mut self) -> Result<I16x3, Error<E>> {
+        let x = self.read_reg_i16(&Bank0::GYRO_DATA_X1, &Bank0::GYRO_DATA_X0)?;
+        let y = self.read_reg_i16(&Bank0::GYRO_DATA_Y1, &Bank0::GYRO_DATA_Y0)?;
+        let z = self.read_reg_i16(&Bank0::GYRO_DATA_Z1, &Bank0::GYRO_DATA_Z0)?;
+
+        Ok(I16x3::new(x, y, z))
     }
 
     /// Read the built-in temperature sensor and return the value in degrees
@@ -108,13 +130,18 @@ where
     }
 
     /// Read the raw data from the built-in temperature sensor
-    pub fn temperature_raw(&mut self) -> Result<u16, Error<E>> {
-        self.read_reg_u16(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0)
+    pub fn temperature_raw(&mut self) -> Result<i16, Error<E>> {
+        self.read_reg_i16(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0)
     }
 
     /// Return the currently configured power mode
     pub fn power_mode(&mut self) -> Result<PowerMode, Error<E>> {
-        todo!()
+        //  `GYRO_MODE` occupies bits 3:2 in the register
+        // `ACCEL_MODE` occupies bits 1:0 in the register
+        let bits = self.read_reg(&Bank0::PWR_MGMT0)? & 0xF;
+        let mode = PowerMode::try_from(bits).unwrap(); // FIXME
+
+        Ok(mode)
     }
 
     /// Set the power mode of the IMU
@@ -126,7 +153,7 @@ where
     pub fn accel_range(&mut self) -> Result<AccelRange, Error<E>> {
         // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
         let fs_sel = self.read_reg(&Bank0::ACCEL_CONFIG0)? >> 5;
-        let range = AccelRange::try_from(fs_sel)?;
+        let range = AccelRange::try_from(fs_sel).unwrap(); // FIXME
 
         Ok(range)
     }
@@ -140,7 +167,7 @@ where
     pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
         let fs_sel = self.read_reg(&Bank0::GYRO_CONFIG0)? >> 5;
-        let range = GyroRange::try_from(fs_sel)?;
+        let range = GyroRange::try_from(fs_sel).unwrap(); // FIXME
 
         Ok(range)
     }
@@ -155,6 +182,7 @@ where
 
     // FIXME: 'Sleep mode' and 'accelerometer low power mode with WUOSC' do not
     //        support MREG1, MREG2 or MREG3 access.
+    #[allow(unused)]
     fn read_mreg(
         &mut self,
         delay: &mut dyn DelayUs<u8>,
@@ -184,6 +212,7 @@ where
 
     // FIXME: 'Sleep mode' and 'accelerometer low power mode with WUOSC' do not
     //        support MREG1, MREG2 or MREG3 access.
+    #[allow(unused)]
     fn write_mreg(
         &mut self,
         delay: &mut dyn DelayUs<u8>,
@@ -221,15 +250,15 @@ where
     }
 
     /// Read two registers and combine them into a single value.
-    fn read_reg_u16(
+    fn read_reg_i16(
         &mut self,
         reg_hi: &dyn Register,
         reg_lo: &dyn Register,
-    ) -> Result<u16, Error<E>> {
-        let data_hi = self.read_reg(reg_hi)? as u16;
-        let data_lo = self.read_reg(reg_lo)? as u16;
+    ) -> Result<i16, Error<E>> {
+        let data_hi = self.read_reg(reg_hi)?;
+        let data_lo = self.read_reg(reg_lo)?;
 
-        let data = (data_hi << 8) | data_lo;
+        let data = i16::from_be_bytes([data_hi, data_lo]);
 
         Ok(data)
     }
@@ -261,19 +290,19 @@ impl<I2C, E> Accelerometer for Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
     E: Debug,
-    Error<E>: From<Error<()>>,
 {
     type Error = Error<E>;
 
     fn accel_norm(&mut self) -> Result<F32x3, AccelerometerError<Self::Error>> {
-        let scale = 1f32; // FIXME: determine scale from mode/range
-        let shift = 0u16; // FIXME: determine shift from mode
+        let range = self.accel_range()?;
+        let scale = range.scale_factor();
 
+        // Scale the raw Accelerometer data using the appropriate factor based on the
+        // configured range.
         let raw = self.accel_raw()?;
-
-        let x = (raw.x >> shift) as f32 * scale;
-        let y = (raw.y >> shift) as f32 * scale;
-        let z = (raw.z >> shift) as f32 * scale;
+        let x = raw.x as f32 / scale;
+        let y = raw.y as f32 / scale;
+        let z = raw.z as f32 / scale;
 
         Ok(F32x3::new(x, y, z))
     }
@@ -283,19 +312,18 @@ where
     }
 }
 
-impl<I2C, E> RawAccelerometer<U16x3> for Icm42670<I2C>
+impl<I2C, E> RawAccelerometer<I16x3> for Icm42670<I2C>
 where
     I2C: Write<Error = E> + WriteRead<Error = E>,
     E: Debug,
-    Error<E>: From<Error<()>>,
 {
     type Error = Error<E>;
 
-    fn accel_raw(&mut self) -> Result<U16x3, AccelerometerError<Self::Error>> {
-        let x = self.read_reg_u16(&Bank0::ACCEL_DATA_X1, &Bank0::ACCEL_DATA_X0)?;
-        let y = self.read_reg_u16(&Bank0::ACCEL_DATA_Y1, &Bank0::ACCEL_DATA_Y0)?;
-        let z = self.read_reg_u16(&Bank0::ACCEL_DATA_Z1, &Bank0::ACCEL_DATA_Z0)?;
+    fn accel_raw(&mut self) -> Result<I16x3, AccelerometerError<Self::Error>> {
+        let x = self.read_reg_i16(&Bank0::ACCEL_DATA_X1, &Bank0::ACCEL_DATA_X0)?;
+        let y = self.read_reg_i16(&Bank0::ACCEL_DATA_Y1, &Bank0::ACCEL_DATA_Y0)?;
+        let z = self.read_reg_i16(&Bank0::ACCEL_DATA_Z1, &Bank0::ACCEL_DATA_Z0)?;
 
-        Ok(U16x3::new(x, y, z))
+        Ok(I16x3::new(x, y, z))
     }
 }
