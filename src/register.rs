@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+#![allow(unused)]
 
 // All reads and writes actually go through User Bank 0, and the remaining banks
 // are accessed via this bank; as such, User Bank 0 has been omitted, given that
