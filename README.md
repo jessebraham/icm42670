@@ -4,6 +4,11 @@
 
 An `embedded-hal` driver for the ICM-42670 6-axis IMU.
 
+## Resources
+
+- [ICM-42670 Product Page](https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42670-P/)
+- [ICM-42670 Datasheet](https://3cfeqx1hf82y3xcoull08ihx-wpengine.netdna-ssl.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf)
+
 ## License
 
 Licensed under either of:
