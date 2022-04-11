@@ -1,12 +1,16 @@
 # icm42670
 
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/jessebraham/icm42670/CI?label=CI&logo=github&style=flat-square)
-[![Crates.io](https://img.shields.io/crates/v/icm42670?labelColor=1C2C2E&color=C96329&logo=Rust&style=flat-square)](https://crates.io/crates/icm42670)
-[![docs.rs](https://img.shields.io/docsrs/icm42670?labelColor=1C2C2E&color=C96329&logo=rust&style=flat-square)](https://docs.rs/icm42670)
+[![Crates.io](https://img.shields.io/crates/v/icm42670?color=C96329&logo=Rust&style=flat-square)](https://crates.io/crates/icm42670)
+[![docs.rs](https://img.shields.io/docsrs/icm42670?color=C96329&logo=rust&style=flat-square)](https://docs.rs/icm42670)
 ![MSRV](https://img.shields.io/badge/MSRV-1.56-blue?style=flat-square)
-![Crates.io](https://img.shields.io/crates/l/icm42670?labelColor=1C2C2E&style=flat-square)
+![Crates.io](https://img.shields.io/crates/l/icm42670?style=flat-square)
 
 An `embedded-hal` driver for the ICM-42670 6-axis IMU.
+
+While this device supports communication via I²C, SPI, and I3C, presently only I²C is supported. In its current state we are able to read the accelerometer, gyroscope, and temperature sensor data and perform basic configuration of the device. Reading packets from the FIFO is not currently supported.
+
+If there is a feature which has not yet been implemented and which you are interested in, please feel free to open an issue and/or a pull request!
 
 ## Resources
 
