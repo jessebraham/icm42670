@@ -12,6 +12,12 @@ While this device supports communication via I²C, SPI, and I3C, presently only 
 
 If there is a feature which has not yet been implemented and which you are interested in, please feel free to open an issue and/or a pull request!
 
+## Examples
+
+Examples demonstrating how to use this driver can be found in the [icm42670-examples] repository.
+
+[icm42670-examples]: https://github.com/jessebraham/icm42670-examples
+
 ## Resources
 
 - [ICM-42670 Product Page](https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42670-P/)
