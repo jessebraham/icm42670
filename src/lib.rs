@@ -43,7 +43,10 @@ mod register;
 
 /// Re-export any traits which may be required by end users
 pub mod prelude {
-    pub use accelerometer::{Accelerometer as _, RawAccelerometer as _};
+    pub use accelerometer::{
+        Accelerometer as _accelerometer_Accelerometer,
+        RawAccelerometer as _accelerometer_RawAccelerometer,
+    };
 }
 
 /// ICM-42670 driver
@@ -60,16 +63,23 @@ where
     I2C: Write<Error = E> + WriteRead<Error = E>,
     E: Debug,
 {
-    /// Unique device identifier for the ICM-42670
-    pub const WHO_AM_I: u8 = 0x67;
+    /// Unique device identifiers for the ICM-42607 and ICM-42670
+    ///
+    /// The ICM-42607 is the mass-production version of the ICM-42670, and
+    /// differs only by part number and device ID.
+    pub const DEVICE_IDS: [u8; 2] = [
+        0x60, // ICM-42607
+        0x67, // ICM-42670
+    ];
 
     /// Instantiate a new instance of the driver and initialize the device
     pub fn new(i2c: I2C, address: Address) -> Result<Self, Error<E>> {
         let mut me = Self { i2c, address };
 
         // Verify that the device has the correct ID before continuing. If the ID does
-        // not match the expected value then it is likely the wrong chip is connected.
-        if me.device_id()? != Self::WHO_AM_I {
+        // not match either of the expected values then it is likely the wrong chip is
+        // connected.
+        if !Self::DEVICE_IDS.contains(&me.device_id()?) {
             return Err(Error::SensorError(SensorError::BadChip));
         }
 
@@ -303,8 +313,7 @@ where
         } else {
             self.i2c
                 .write(self.address as u8, &[reg.addr(), value])
-                .map_err(|e| Error::BusError(e))?;
-            Ok(())
+                .map_err(|e| Error::BusError(e))
         }
     }
 
@@ -314,10 +323,14 @@ where
     /// in its current value and then update it accordingly using the given
     /// value and mask before writing back the desired value.
     fn update_reg(&mut self, reg: &dyn Register, value: u8, mask: u8) -> Result<(), Error<E>> {
-        let current = self.read_reg(reg)?;
-        let value = (current & !mask) | (value & mask);
+        if reg.read_only() {
+            Err(Error::SensorError(SensorError::WriteToReadOnly))
+        } else {
+            let current = self.read_reg(reg)?;
+            let value = (current & !mask) | (value & mask);
 
-        self.write_reg(reg, value)
+            self.write_reg(reg, value)
+        }
     }
 }
 
