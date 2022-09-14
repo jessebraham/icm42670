@@ -1,6 +1,6 @@
 [package]
 name         = "icm42670"
-version      = "0.1.0"
+version      = "0.1.1"
 authors      = ["Jesse Braham <jesse@beta7.io>"]
 edition      = "2021"
 rust-version = "1.56"
@@ -11,5 +11,5 @@ keywords     = ["accelerometer", "gyro", "imu"]
 categories   = ["aerospace", "embedded", "hardware-support", "no-std"]
 
 [dependencies]
-accelerometer = "0.12"
-embedded-hal  = "0.2"
+accelerometer = "0.12.0"
+embedded-hal  = "0.2.7"
