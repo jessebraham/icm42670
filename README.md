@@ -1,6 +1,6 @@
 # icm42670
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/jessebraham/icm42670/CI?label=CI&logo=github&style=flat-square)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/jessebraham/icm42670/ci.yaml?label=CI&logo=github&style=flat-square)
 [![Crates.io](https://img.shields.io/crates/v/icm42670?color=C96329&logo=Rust&style=flat-square)](https://crates.io/crates/icm42670)
 [![docs.rs](https://img.shields.io/docsrs/icm42670?color=C96329&logo=rust&style=flat-square)](https://docs.rs/icm42670)
 ![MSRV](https://img.shields.io/badge/MSRV-1.56-blue?style=flat-square)
