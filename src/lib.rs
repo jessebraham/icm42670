@@ -9,7 +9,7 @@
 //! [datasheet].
 //!
 //! [embedded-hal]: https://docs.rs/embedded-hal/latest/embedded_hal/
-//! [datasheet]: https://3cfeqx1hf82y3xcoull08ihx-wpengine.netdna-ssl.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf
+//! [datasheet]: https://invensense.tdk.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf
 
 #![no_std]
 
@@ -27,12 +27,12 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 
-use crate::{
+use self::{
     config::Bitfield,
     error::SensorError,
-    register::{Bank0, Register, RegisterBank},
+    register::{Bank0, Mreg1, Register, RegisterBank},
 };
-pub use crate::{
+pub use self::{
     config::{AccelOdr, AccelRange, Address, GyroOdr, GyroRange, PowerMode},
     error::Error,
 };
@@ -220,11 +220,56 @@ where
     }
 
     // -----------------------------------------------------------------------
+    // INTERRUPTS
+
+    /// Configure the INT2 pin
+    pub fn config_int2(
+        &mut self,
+        latched_mode: bool,
+        push_pull: bool,
+        active_high: bool,
+    ) -> Result<(), Error<E>> {
+        self.update_reg(
+            &Bank0::INT_CONFIG,
+            (latched_mode as u8) << 5 | (push_pull as u8) << 4 | (active_high as u8) << 3,
+            0b0011_1000,
+        )
+    }
+
+    pub fn do_the_thing(&mut self, delay: &mut dyn DelayUs<u8>) -> Result<(), Error<E>> {
+        // Set `APEX_CONFIG1::TILT_ENABLE`:
+        self.update_reg(&Bank0::APEX_CONFIG1, 1u8 << 4, 0b0001_0000)?;
+
+        // Set `INT_SOURCE7::TILT_DET_INT2_EN`:
+        self.update_mreg(
+            delay,
+            RegisterBank::MReg1,
+            &Mreg1::INT_SOURCE7,
+            1u8 << 3,
+            0b0000_1000,
+        )?;
+
+        // Set `APEX_CONFIG5::TILT_WAIT_TIME_SEL`:
+        self.update_mreg(
+            delay,
+            RegisterBank::MReg1,
+            &Mreg1::APEX_CONFIG5,
+            1u8 << 6,
+            0b0100_0000,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn int_status3(&mut self) -> Result<u8, Error<E>> {
+        self.read_reg(&Bank0::INT_STATUS3)
+    }
+
+    // -----------------------------------------------------------------------
     // PRIVATE
 
     // FIXME: 'Sleep mode' and 'accelerometer low power mode with WUOSC' do not
     //        support MREG1, MREG2 or MREG3 access.
-    #[allow(unused)]
     fn read_mreg(
         &mut self,
         delay: &mut dyn DelayUs<u8>,
@@ -234,7 +279,7 @@ where
         // See "ACCESSING MREG1, MREG2 AND MREG3 REGISTERS" (page 40)
 
         // Wait until the internal clock is running prior to writing.
-        while self.read_reg(&Bank0::MCLK_RDY)? != 0x1 {}
+        while self.read_reg(&Bank0::MCLK_RDY)? & 0x8 == 0 {}
 
         // Select the appropriate block and set the register address to read from.
         self.write_reg(&Bank0::BLK_SEL_R, bank.blk_sel())?;
@@ -254,7 +299,6 @@ where
 
     // FIXME: 'Sleep mode' and 'accelerometer low power mode with WUOSC' do not
     //        support MREG1, MREG2 or MREG3 access.
-    #[allow(unused)]
     fn write_mreg(
         &mut self,
         delay: &mut dyn DelayUs<u8>,
@@ -265,7 +309,7 @@ where
         // See "ACCESSING MREG1, MREG2 AND MREG3 REGISTERS" (page 40)
 
         // Wait until the internal clock is running prior to writing.
-        while self.read_reg(&Bank0::MCLK_RDY)? != 0x1 {}
+        while self.read_reg(&Bank0::MCLK_RDY)? & 0x8 == 0 {}
 
         // Select the appropriate block and set the register address to write to.
         self.write_reg(&Bank0::BLK_SEL_W, bank.blk_sel())?;
@@ -280,6 +324,26 @@ where
         self.write_reg(&Bank0::BLK_SEL_W, 0x00)?;
 
         Ok(())
+    }
+
+    // FIXME: 'Sleep mode' and 'accelerometer low power mode with WUOSC' do not
+    //        support MREG1, MREG2 or MREG3 access.
+    fn update_mreg(
+        &mut self,
+        delay: &mut dyn DelayUs<u8>,
+        bank: RegisterBank,
+        reg: &dyn Register,
+        value: u8,
+        mask: u8,
+    ) -> Result<(), Error<E>> {
+        if reg.read_only() {
+            Err(Error::SensorError(SensorError::WriteToReadOnly))
+        } else {
+            let current = self.read_mreg(delay, bank, reg)?;
+            let value = (current & !mask) | (value & mask);
+
+            self.write_mreg(delay, bank, reg, value)
+        }
     }
 
     /// Read a register at the provided address.
