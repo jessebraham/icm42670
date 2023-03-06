@@ -18,7 +18,7 @@ pub enum Address {
 }
 
 /// Configurable ranges of the Accelerometer
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum AccelRange {
     /// ±2G
     G2  = 3,
@@ -27,6 +27,7 @@ pub enum AccelRange {
     /// ±8G
     G8  = 1,
     /// ±16G
+    #[default]
     G16 = 0,
 }
 
@@ -54,12 +55,6 @@ impl Bitfield for AccelRange {
     }
 }
 
-impl Default for AccelRange {
-    fn default() -> Self {
-        Self::G16
-    }
-}
-
 impl TryFrom<u8> for AccelRange {
     type Error = SensorError;
 
@@ -77,7 +72,7 @@ impl TryFrom<u8> for AccelRange {
 }
 
 /// Configurable ranges of the Gyroscope
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum GyroRange {
     /// ±250 deg/sec
     Deg250  = 3,
@@ -86,6 +81,7 @@ pub enum GyroRange {
     /// ±1000 deg/sec
     Deg1000 = 1,
     /// ±2000 deg/sec
+    #[default]
     Deg2000 = 0,
 }
 
@@ -113,12 +109,6 @@ impl Bitfield for GyroRange {
     }
 }
 
-impl Default for GyroRange {
-    fn default() -> Self {
-        Self::Deg2000
-    }
-}
-
 impl TryFrom<u8> for GyroRange {
     type Error = SensorError;
 
@@ -136,9 +126,10 @@ impl TryFrom<u8> for GyroRange {
 }
 
 /// Configurable power modes of the IMU
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum PowerMode {
     /// Gyroscope: OFF, Accelerometer: OFF
+    #[default]
     Sleep           = 0b0000,
     /// Gyroscope: DRIVE ON, Accelerometer: OFF
     Standby         = 0b0100,
@@ -162,12 +153,6 @@ impl Bitfield for PowerMode {
     }
 }
 
-impl Default for PowerMode {
-    fn default() -> Self {
-        PowerMode::Sleep
-    }
-}
-
 impl TryFrom<u8> for PowerMode {
     type Error = SensorError;
 
@@ -187,11 +172,12 @@ impl TryFrom<u8> for PowerMode {
 }
 
 /// Accelerometer ODR selection values
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum AccelOdr {
     /// 1.6 kHz (LN mode)
     Hz1600   = 0b0101,
     /// 800 Hz (LN mode
+    #[default]
     Hz800    = 0b0110,
     /// 400 Hz (LP or LN mode)
     Hz400    = 0b0111,
@@ -242,12 +228,6 @@ impl Bitfield for AccelOdr {
     }
 }
 
-impl Default for AccelOdr {
-    fn default() -> Self {
-        Self::Hz800
-    }
-}
-
 impl TryFrom<u8> for AccelOdr {
     type Error = SensorError;
 
@@ -272,11 +252,12 @@ impl TryFrom<u8> for AccelOdr {
 }
 
 /// Gyroscope ODR selection values
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum GyroOdr {
     /// 1.6k Hz
     Hz1600 = 0b0101,
     /// 800 Hz
+    #[default]
     Hz800  = 0b0110,
     /// 400 Hz
     Hz400  = 0b0111,
@@ -315,12 +296,6 @@ impl Bitfield for GyroOdr {
     fn bits(self) -> u8 {
         // `GYRO_ODR` occupies bits 3:0 in the register
         self as u8
-    }
-}
-
-impl Default for GyroOdr {
-    fn default() -> Self {
-        Self::Hz800
     }
 }
 
