@@ -10,6 +10,12 @@ license      = "MIT OR Apache-2.0"
 keywords     = ["accelerometer", "gyro", "imu"]
 categories   = ["aerospace", "embedded", "hardware-support", "no-std"]
 
+[features]
+default = ["async"]
+async = ["embedded-hal-async"]
+
 [dependencies]
-accelerometer = "0.12.0"
-embedded-hal  = "0.2.7"
+accelerometer      = "0.12.0"
+
+embedded-hal       = "0.2.7"
+embedded-hal-async = { version = "1.0.0-rc.1", optional = true }
