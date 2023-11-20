@@ -271,6 +271,85 @@ impl TryFrom<u8> for AccelOdr {
     }
 }
 
+/// Acceleration Low Power Averaging
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccLpAvg {
+    X2  = 0b0000,
+    X4  = 0b0001,
+    X8  = 0b0010,
+    X16 = 0b0011,
+    X32 = 0b0100,
+    X64 = 0b0101,
+}
+
+impl Bitfield for AccLpAvg {
+    const BITMASK: u8 = 0b1111_0000;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 4
+    }
+}
+
+
+/// Acceleration Digital Low Pass Filter options
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccelDlpfBw {
+    Bypassed = 0b0000,
+    Hz180    = 0b0001,
+    Hz121    = 0b0010,
+    Hz73     = 0b0011,
+    Hz53     = 0b0100,
+    Hz34     = 0b0101,
+    Hz25     = 0b0110,
+    Hz16     = 0b0111,
+}
+
+impl Bitfield for AccelDlpfBw {
+    const BITMASK: u8 = 0b0000_0111;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
+
+/// Temperature DLPF (Digital Low Pass Filter) Bandwidth
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TempDlpfBw {
+    Bypassed = 0b0000,
+    Hz180    = 0b0001,
+    Hz72     = 0b0010,
+    Hz34     = 0b0011,
+    Hz16     = 0b0100,
+    Hz8      = 0b0101,
+    Hz4      = 0b0110,
+}
+impl Bitfield for TempDlpfBw {
+    const BITMASK: u8 = 0b0111_0000;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 4
+    }
+}
+
+/// Gyroscope UI low pass filter bandwidth
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum GyroLpFiltBw {
+    Bypassed = 0b0000,
+    Hz180    = 0b0001,
+    Hz121    = 0b0010,
+    Hz73     = 0b0011,
+    Hz53     = 0b0100,
+    Hz34     = 0b0101,
+    Hz25     = 0b0110,
+    Hz16     = 0b0111,
+}
+impl Bitfield for GyroLpFiltBw {
+    const BITMASK: u8 = 0b0000_0111;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
 /// Gyroscope ODR selection values
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GyroOdr {

@@ -22,6 +22,7 @@ use accelerometer::{
     Accelerometer,
     RawAccelerometer,
 };
+use config::{GyroLpFiltBw, TempDlpfBw, AccLpAvg, AccelDlpfBw};
 use embedded_hal::blocking::{
     delay::DelayUs,
     i2c::{Write, WriteRead},
@@ -148,6 +149,13 @@ where
         self.read_reg_i16(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0)
     }
 
+    /// Sets the bandwidth of the temperature signal DLPF (Digital Low Pass Filter)
+    /// This field can be changed on the fly even if the sensor is on
+    pub fn set_temp_dlpf(&mut self, freq: TempDlpfBw) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::TEMP_CONFIG0, freq.bits(), TempDlpfBw::BITMASK)
+    }
+
+
     /// Return the currently configured power mode
     pub fn power_mode(&mut self) -> Result<PowerMode, Error<E>> {
         //  `GYRO_MODE` occupies bits 3:2 in the register
@@ -177,6 +185,13 @@ where
         self.update_reg(&Bank0::ACCEL_CONFIG0, range.bits(), AccelRange::BITMASK)
     }
 
+    /// Set acceleration low-power averaging value.
+    /// This field cannot be changed when the accel sensor is in LPM (LowPowerMode)
+    pub fn set_accel_low_power_avg(&mut self, avg_val: AccLpAvg)-> Result<(), Error<E>> {
+        self.update_reg(&Bank0::APEX_CONFIG1, avg_val.bits(), AccLpAvg::BITMASK)
+    }
+
+
     /// Return the currently configured gyroscope range
     pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
@@ -191,6 +206,12 @@ where
         self.update_reg(&Bank0::GYRO_CONFIG0, range.bits(), GyroRange::BITMASK)
     }
 
+    /// Selects GYRO UI low pass filter bandwidth
+    /// This field can be changed on the fly even if gyro sonsor is on
+    pub fn set_gyro_lp_filter_bandwidth(&mut self, freq: GyroLpFiltBw) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::GYRO_CONFIG1, freq.bits(), GyroLpFiltBw::BITMASK)
+    }
+
     /// Return the currently configured output data rate for the accelerometer
     pub fn accel_odr(&mut self) -> Result<AccelOdr, Error<E>> {
         // `ACCEL_ODR` occupies bits 3:0 in the register
@@ -203,6 +224,12 @@ where
     /// Set the output data rate of the accelerometer
     pub fn set_accel_odr(&mut self, odr: AccelOdr) -> Result<(), Error<E>> {
         self.update_reg(&Bank0::ACCEL_CONFIG0, odr.bits(), AccelOdr::BITMASK)
+    }
+
+    /// Selects ACCEL UI low pass filter bandwidth
+    /// This field can be changed on-the-fly even if accel sonsor is on
+    pub fn set_accel_dlpf_bw(&mut self, odr: AccelDlpfBw) -> Result<(), Error<E>> {
+        self.update_reg(&Bank0::ACCEL_CONFIG1, odr.bits(), AccelDlpfBw::BITMASK)
     }
 
     /// Return the currently configured output data rate for the gyroscope
