@@ -111,7 +111,7 @@ impl GyroRange {
 impl Bitfield for GyroRange {
     const BITMASK: u8 = 0b0110_0000;
     type Reg = Bank0;
-    const REGISTER: Self::Reg = Self::Reg::GYRO_CONFIG1;
+    const REGISTER: Self::Reg = Self::Reg::GYRO_CONFIG0;
 
     fn bits(self) -> u8 {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
@@ -284,16 +284,16 @@ impl TryFrom<u8> for AccelOdr {
 /// Acceleration Low Power Averaging
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccLpAvg {
-    X2  = 0b0000,
-    X4  = 0b0001,
-    X8  = 0b0010,
-    X16 = 0b0011,
-    X32 = 0b0100,
-    X64 = 0b0101,
+    X2  = 0b000,
+    X4  = 0b001,
+    X8  = 0b010,
+    X16 = 0b011,
+    X32 = 0b100,
+    X64 = 0b101,
 }
 
 impl Bitfield for AccLpAvg {
-    const BITMASK: u8 = 0b1111_0000;
+    const BITMASK: u8 = 0b0111_0000;
     type Reg = Bank0;
     const REGISTER: Self::Reg = Self::Reg::ACCEL_CONFIG1;
 
@@ -306,14 +306,14 @@ impl Bitfield for AccLpAvg {
 /// Acceleration Digital Low Pass Filter options
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccelDlpfBw {
-    Bypassed = 0b0000,
-    Hz180    = 0b0001,
-    Hz121    = 0b0010,
-    Hz73     = 0b0011,
-    Hz53     = 0b0100,
-    Hz34     = 0b0101,
-    Hz25     = 0b0110,
-    Hz16     = 0b0111,
+    Bypassed = 0b000,
+    Hz180    = 0b001,
+    Hz121    = 0b010,
+    Hz73     = 0b011,
+    Hz53     = 0b100,
+    Hz34     = 0b101,
+    Hz25     = 0b110,
+    Hz16     = 0b111,
 }
 
 impl Bitfield for AccelDlpfBw {
@@ -329,13 +329,13 @@ impl Bitfield for AccelDlpfBw {
 /// Temperature DLPF (Digital Low Pass Filter) Bandwidth
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TempDlpfBw {
-    Bypassed = 0b0000,
-    Hz180    = 0b0001,
-    Hz72     = 0b0010,
-    Hz34     = 0b0011,
-    Hz16     = 0b0100,
-    Hz8      = 0b0101,
-    Hz4      = 0b0110,
+    Bypassed = 0b000,
+    Hz180    = 0b001,
+    Hz72     = 0b010,
+    Hz34     = 0b011,
+    Hz16     = 0b100,
+    Hz8      = 0b101,
+    Hz4      = 0b110,
 }
 impl Bitfield for TempDlpfBw {
     const BITMASK: u8 = 0b0111_0000;
@@ -350,14 +350,14 @@ impl Bitfield for TempDlpfBw {
 /// Gyroscope UI low pass filter bandwidth
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GyroLpFiltBw {
-    Bypassed = 0b0000,
-    Hz180    = 0b0001,
-    Hz121    = 0b0010,
-    Hz73     = 0b0011,
-    Hz53     = 0b0100,
-    Hz34     = 0b0101,
-    Hz25     = 0b0110,
-    Hz16     = 0b0111,
+    Bypassed = 0b000,
+    Hz180    = 0b001,
+    Hz121    = 0b010,
+    Hz73     = 0b011,
+    Hz53     = 0b100,
+    Hz34     = 0b101,
+    Hz25     = 0b110,
+    Hz16     = 0b111,
 }
 impl Bitfield for GyroLpFiltBw {
     const BITMASK: u8 = 0b0000_0111;
