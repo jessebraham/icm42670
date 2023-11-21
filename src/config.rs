@@ -635,7 +635,7 @@ pub(crate) enum AllSlewRate {
     M2        = 0b101,
 }
 
-impl Bitfield for SpiSlewRate {
+impl Bitfield for AllSlewRate {
     const BITMASK: u8 = 0b0000_0111;
     type Reg = Bank0;
     const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG2;
@@ -669,7 +669,7 @@ pub(crate) enum SpiSlewRate {
     M2        = 0b101,
 }
 
-impl Bitfield for AllSlewRate {
+impl Bitfield for SpiSlewRate {
     const BITMASK: u8 = 0b0000_0111;
     type Reg = Bank0;
     const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG2;
