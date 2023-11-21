@@ -539,6 +539,37 @@ where
             self.write_reg_async(reg, value).await
         }
     }
+    // RawAccelerometer - async versions
+
+    pub async fn accel_raw_async(&mut self) -> Result<I16x3, Error<I2C::Error>> {
+        let x = self.read_reg_i16_async(&Bank0::ACCEL_DATA_X1, &Bank0::ACCEL_DATA_X0).await?;
+        let y = self.read_reg_i16_async(&Bank0::ACCEL_DATA_Y1, &Bank0::ACCEL_DATA_Y0).await?;
+        let z = self.read_reg_i16_async(&Bank0::ACCEL_DATA_Z1, &Bank0::ACCEL_DATA_Z0).await?;
+
+        Ok(I16x3::new(x, y, z))
+    }
+
+    // Accelerometer - async versions
+    pub async fn accel_norm_async(&mut self) -> Result<F32x3, Error<I2C::Error>> {
+        let range = self.accel_range_async().await?;
+        let scale = range.scale_factor();
+
+        // Scale the raw Accelerometer data using the appropriate factor based on the
+        // configured range.
+        let raw = self.accel_raw_async().await?;
+        let x = raw.x as f32 / scale;
+        let y = raw.y as f32 / scale;
+        let z = raw.z as f32 / scale;
+
+        Ok(F32x3::new(x, y, z))
+    }
+
+    pub async fn sample_rate_async(&mut self) -> Result<f32, Error<I2C::Error>> {
+        let odr = self.accel_odr_async().await?;
+        let rate = odr.as_f32();
+
+        Ok(rate)
+    }
 }
 
 impl<I2C, E> Accelerometer for Icm42670<I2C>
