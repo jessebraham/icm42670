@@ -22,6 +22,7 @@ use accelerometer::{
     Accelerometer,
     RawAccelerometer,
 };
+use config::{AccLpAvg, AccelDlpfBw, GyroLpFiltBw, SoftReset, TempDlpfBw};
 use embedded_hal::blocking::{
     delay::DelayUs,
     i2c::{Write, WriteRead},
@@ -107,7 +108,7 @@ where
 
     /// Perform a software-reset on the device
     pub fn soft_reset(&mut self) -> Result<(), Error<E>> {
-        self.update_reg(&Bank0::SIGNAL_PATH_RESET, 0x10, 0b0001_0000)
+        self.update_reg(SoftReset::Enabled)
     }
 
     /// Return the normalized gyro data for each of the three axes
@@ -148,6 +149,15 @@ where
         self.read_reg_i16(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0)
     }
 
+    /// Sets the bandwidth of the temperature signal DLPF (Digital Low Pass
+    /// Filter)
+    ///
+    /// This field can be changed on the fly even if the sensor is
+    /// on
+    pub fn set_temp_dlpf(&mut self, freq: TempDlpfBw) -> Result<(), Error<E>> {
+        self.update_reg(freq)
+    }
+
     /// Return the currently configured power mode
     pub fn power_mode(&mut self) -> Result<PowerMode, Error<E>> {
         //  `GYRO_MODE` occupies bits 3:2 in the register
@@ -160,7 +170,7 @@ where
 
     /// Set the power mode of the IMU
     pub fn set_power_mode(&mut self, mode: PowerMode) -> Result<(), Error<E>> {
-        self.update_reg(&Bank0::PWR_MGMT0, mode.bits(), PowerMode::BITMASK)
+        self.update_reg(mode)
     }
 
     /// Return the currently configured accelerometer range
@@ -174,7 +184,15 @@ where
 
     /// Set the range of the accelerometer
     pub fn set_accel_range(&mut self, range: AccelRange) -> Result<(), Error<E>> {
-        self.update_reg(&Bank0::ACCEL_CONFIG0, range.bits(), AccelRange::BITMASK)
+        self.update_reg(range)
+    }
+
+    /// Set acceleration low-power averaging value.
+    ///
+    /// This field cannot be changed when the accel sensor is in LPM
+    /// (LowPowerMode)
+    pub fn set_accel_low_power_avg(&mut self, avg_val: AccLpAvg) -> Result<(), Error<E>> {
+        self.update_reg(avg_val)
     }
 
     /// Return the currently configured gyroscope range
@@ -188,7 +206,13 @@ where
 
     /// Set the range of the gyro
     pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Error<E>> {
-        self.update_reg(&Bank0::GYRO_CONFIG0, range.bits(), GyroRange::BITMASK)
+        self.update_reg(range)
+    }
+
+    /// Selects GYRO UI low pass filter bandwidth
+    /// This field can be changed on the fly even if gyro sonsor is on
+    pub fn set_gyro_lp_filter_bandwidth(&mut self, freq: GyroLpFiltBw) -> Result<(), Error<E>> {
+        self.update_reg(freq)
     }
 
     /// Return the currently configured output data rate for the accelerometer
@@ -202,7 +226,13 @@ where
 
     /// Set the output data rate of the accelerometer
     pub fn set_accel_odr(&mut self, odr: AccelOdr) -> Result<(), Error<E>> {
-        self.update_reg(&Bank0::ACCEL_CONFIG0, odr.bits(), AccelOdr::BITMASK)
+        self.update_reg(odr)
+    }
+
+    /// Selects ACCEL UI low pass filter bandwidth
+    /// This field can be changed on-the-fly even if accel sonsor is on
+    pub fn set_accel_dlpf_bw(&mut self, dlpf: AccelDlpfBw) -> Result<(), Error<E>> {
+        self.update_reg(dlpf)
     }
 
     /// Return the currently configured output data rate for the gyroscope
@@ -216,7 +246,7 @@ where
 
     /// Set the output data rate of the gyroscope
     pub fn set_gyro_odr(&mut self, odr: GyroOdr) -> Result<(), Error<E>> {
-        self.update_reg(&Bank0::GYRO_CONFIG0, odr.bits(), GyroOdr::BITMASK)
+        self.update_reg(odr)
     }
 
     // -----------------------------------------------------------------------
@@ -283,7 +313,7 @@ where
     }
 
     /// Read a register at the provided address.
-    fn read_reg(&mut self, reg: &dyn Register) -> Result<u8, Error<E>> {
+    fn read_reg<R: Register>(&mut self, reg: &R) -> Result<u8, Error<E>> {
         let mut buffer = [0u8];
         self.i2c
             .write_read(self.address as u8, &[reg.addr()], &mut buffer)
@@ -293,11 +323,7 @@ where
     }
 
     /// Read two registers and combine them into a single value.
-    fn read_reg_i16(
-        &mut self,
-        reg_hi: &dyn Register,
-        reg_lo: &dyn Register,
-    ) -> Result<i16, Error<E>> {
+    fn read_reg_i16<R: Register>(&mut self, reg_hi: &R, reg_lo: &R) -> Result<i16, Error<E>> {
         let data_hi = self.read_reg(reg_hi)?;
         let data_lo = self.read_reg(reg_lo)?;
 
@@ -307,7 +333,7 @@ where
     }
 
     /// Set a register at the provided address to a given value.
-    fn write_reg(&mut self, reg: &dyn Register, value: u8) -> Result<(), Error<E>> {
+    fn write_reg<R: Register>(&mut self, reg: &R, value: u8) -> Result<(), Error<E>> {
         if reg.read_only() {
             Err(Error::SensorError(SensorError::WriteToReadOnly))
         } else {
@@ -322,14 +348,14 @@ where
     /// Rather than overwriting any active bits in the register, we first read
     /// in its current value and then update it accordingly using the given
     /// value and mask before writing back the desired value.
-    fn update_reg(&mut self, reg: &dyn Register, value: u8, mask: u8) -> Result<(), Error<E>> {
-        if reg.read_only() {
+    fn update_reg<BF: Bitfield>(&mut self, value: BF) -> Result<(), Error<E>> {
+        if BF::REGISTER.read_only() {
             Err(Error::SensorError(SensorError::WriteToReadOnly))
         } else {
-            let current = self.read_reg(reg)?;
-            let value = (current & !mask) | (value & mask);
+            let current = self.read_reg(&BF::REGISTER)?;
+            let value = (current & !BF::BITMASK) | (value.bits() & BF::BITMASK);
 
-            self.write_reg(reg, value)
+            self.write_reg(&BF::REGISTER, value)
         }
     }
 }

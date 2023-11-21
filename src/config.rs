@@ -1,7 +1,12 @@
-use crate::error::SensorError;
+use crate::{
+    error::SensorError,
+    register::{Bank0, Register},
+};
 
 pub(crate) trait Bitfield {
     const BITMASK: u8;
+    type Reg: Register;
+    const REGISTER: Self::Reg;
 
     /// Bit value of a discriminant, shifted to the correct position if
     /// necessary
@@ -47,6 +52,8 @@ impl AccelRange {
 
 impl Bitfield for AccelRange {
     const BITMASK: u8 = 0b0110_0000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::ACCEL_CONFIG0;
 
     fn bits(self) -> u8 {
         // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
@@ -106,6 +113,8 @@ impl GyroRange {
 
 impl Bitfield for GyroRange {
     const BITMASK: u8 = 0b0110_0000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::GYRO_CONFIG0;
 
     fn bits(self) -> u8 {
         // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
@@ -154,6 +163,8 @@ pub enum PowerMode {
 
 impl Bitfield for PowerMode {
     const BITMASK: u8 = 0b0000_1111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::PWR_MGMT0;
 
     fn bits(self) -> u8 {
         // `GYRO_MODE` occupies bits 3:2 in the register
@@ -235,6 +246,8 @@ impl AccelOdr {
 
 impl Bitfield for AccelOdr {
     const BITMASK: u8 = 0b0000_1111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::ACCEL_CONFIG0;
 
     fn bits(self) -> u8 {
         // `ACCEL_ODR` occupies bits 3:0 in the register
@@ -271,6 +284,92 @@ impl TryFrom<u8> for AccelOdr {
     }
 }
 
+/// Acceleration Low Power Averaging
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccLpAvg {
+    X2  = 0b000,
+    X4  = 0b001,
+    X8  = 0b010,
+    X16 = 0b011,
+    X32 = 0b100,
+    X64 = 0b101,
+}
+
+impl Bitfield for AccLpAvg {
+    const BITMASK: u8 = 0b0111_0000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::ACCEL_CONFIG1;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 4
+    }
+}
+
+/// Acceleration Digital Low Pass Filter options
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccelDlpfBw {
+    Bypassed = 0b000,
+    Hz180    = 0b001,
+    Hz121    = 0b010,
+    Hz73     = 0b011,
+    Hz53     = 0b100,
+    Hz34     = 0b101,
+    Hz25     = 0b110,
+    Hz16     = 0b111,
+}
+
+impl Bitfield for AccelDlpfBw {
+    const BITMASK: u8 = 0b0000_0111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::ACCEL_CONFIG1;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
+
+/// Temperature DLPF (Digital Low Pass Filter) Bandwidth
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TempDlpfBw {
+    Bypassed = 0b000,
+    Hz180    = 0b001,
+    Hz72     = 0b010,
+    Hz34     = 0b011,
+    Hz16     = 0b100,
+    Hz8      = 0b101,
+    Hz4      = 0b110,
+}
+impl Bitfield for TempDlpfBw {
+    const BITMASK: u8 = 0b0111_0000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::TEMP_CONFIG0;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 4
+    }
+}
+
+/// Gyroscope UI low pass filter bandwidth
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum GyroLpFiltBw {
+    Bypassed = 0b000,
+    Hz180    = 0b001,
+    Hz121    = 0b010,
+    Hz73     = 0b011,
+    Hz53     = 0b100,
+    Hz34     = 0b101,
+    Hz25     = 0b110,
+    Hz16     = 0b111,
+}
+impl Bitfield for GyroLpFiltBw {
+    const BITMASK: u8 = 0b0000_0111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::GYRO_CONFIG1;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
 /// Gyroscope ODR selection values
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GyroOdr {
@@ -311,6 +410,8 @@ impl GyroOdr {
 
 impl Bitfield for GyroOdr {
     const BITMASK: u8 = 0b0000_1111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::GYRO_CONFIG0;
 
     fn bits(self) -> u8 {
         // `GYRO_ODR` occupies bits 3:0 in the register
@@ -341,5 +442,21 @@ impl TryFrom<u8> for GyroOdr {
             0b1100 => Ok(Hz12_5),
             _ => Err(SensorError::InvalidDiscriminant),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SoftReset {
+    Enabled   = 0b0,
+    _Disabled = 0b1,
+}
+
+impl Bitfield for SoftReset {
+    const BITMASK: u8 = 0b0001_0000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::SIGNAL_PATH_RESET;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 4
     }
 }
