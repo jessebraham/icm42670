@@ -22,7 +22,7 @@ use accelerometer::{
     Accelerometer,
     RawAccelerometer,
 };
-use config::{GyroLpFiltBw, TempDlpfBw, AccLpAvg, AccelDlpfBw, SoftReset};
+use config::{AccLpAvg, AccelDlpfBw, GyroLpFiltBw, SoftReset, TempDlpfBw};
 use embedded_hal::blocking::{
     delay::DelayUs,
     i2c::{Write, WriteRead},
@@ -149,12 +149,14 @@ where
         self.read_reg_i16(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0)
     }
 
-    /// Sets the bandwidth of the temperature signal DLPF (Digital Low Pass Filter)
-    /// This field can be changed on the fly even if the sensor is on
+    /// Sets the bandwidth of the temperature signal DLPF (Digital Low Pass
+    /// Filter)
+    ///
+    /// This field can be changed on the fly even if the sensor is
+    /// on
     pub fn set_temp_dlpf(&mut self, freq: TempDlpfBw) -> Result<(), Error<E>> {
         self.update_reg(freq)
     }
-
 
     /// Return the currently configured power mode
     pub fn power_mode(&mut self) -> Result<PowerMode, Error<E>> {
@@ -186,11 +188,12 @@ where
     }
 
     /// Set acceleration low-power averaging value.
-    /// This field cannot be changed when the accel sensor is in LPM (LowPowerMode)
-    pub fn set_accel_low_power_avg(&mut self, avg_val: AccLpAvg)-> Result<(), Error<E>> {
+    ///
+    /// This field cannot be changed when the accel sensor is in LPM
+    /// (LowPowerMode)
+    pub fn set_accel_low_power_avg(&mut self, avg_val: AccLpAvg) -> Result<(), Error<E>> {
         self.update_reg(avg_val)
     }
-
 
     /// Return the currently configured gyroscope range
     pub fn gyro_range(&mut self) -> Result<GyroRange, Error<E>> {
@@ -320,11 +323,7 @@ where
     }
 
     /// Read two registers and combine them into a single value.
-    fn read_reg_i16<R: Register>(
-        &mut self,
-        reg_hi: &R,
-        reg_lo: &R,
-    ) -> Result<i16, Error<E>> {
+    fn read_reg_i16<R: Register>(&mut self, reg_hi: &R, reg_lo: &R) -> Result<i16, Error<E>> {
         let data_hi = self.read_reg(reg_hi)?;
         let data_lo = self.read_reg(reg_lo)?;
 
@@ -349,7 +348,6 @@ where
     /// Rather than overwriting any active bits in the register, we first read
     /// in its current value and then update it accordingly using the given
     /// value and mask before writing back the desired value.
-    // fn update_reg(&mut self, reg: &dyn Register, value: u8, mask: u8) -> Result<(), Error<E>> {
     fn update_reg<BF: Bitfield>(&mut self, value: BF) -> Result<(), Error<E>> {
         if BF::REGISTER.read_only() {
             Err(Error::SensorError(SensorError::WriteToReadOnly))

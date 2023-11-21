@@ -1,4 +1,7 @@
-use crate::{error::SensorError, register::{Register, Bank0}};
+use crate::{
+    error::SensorError,
+    register::{Bank0, Register},
+};
 
 pub(crate) trait Bitfield {
     const BITMASK: u8;
@@ -302,7 +305,6 @@ impl Bitfield for AccLpAvg {
     }
 }
 
-
 /// Acceleration Digital Low Pass Filter options
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccelDlpfBw {
@@ -443,10 +445,9 @@ impl TryFrom<u8> for GyroOdr {
     }
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum SoftReset {
-    Enabled = 0b0,
+    Enabled   = 0b0,
     _Disabled = 0b1,
 }
 
@@ -459,4 +460,3 @@ impl Bitfield for SoftReset {
         (self as u8) << 4
     }
 }
-
