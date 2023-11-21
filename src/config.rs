@@ -460,3 +460,221 @@ impl Bitfield for SoftReset {
         (self as u8) << 4
     }
 }
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum MClkReady {
+    Running    = 0b0,
+    NotRunning = 0b1,
+}
+
+impl Bitfield for MClkReady {
+    const BITMASK: u8 = 0b0000_1000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::MCLK_RDY;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 3
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SpiWireCount {
+    ThreeWire = 0b0,
+    FourWire  = 0b1,
+}
+
+impl Bitfield for SpiWireCount {
+    const BITMASK: u8 = 0b0000_0100;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DEVICE_CONFIG;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 2
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SpiMode {
+    Mode0And3 = 0b0,
+    Mode1And2 = 0b1,
+}
+
+impl Bitfield for SpiMode {
+    const BITMASK: u8 = 0b0000_0001;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DEVICE_CONFIG;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
+
+/// Controls slew rate for output pin 14 when device is in I3CSM DDR protocol.
+/// While in I3CSM operation, the device automatically switches to use
+/// I3C_DDR_SLEW_RATE after receiving ENTHDR0 ccc command from the host.
+/// The device automatically switches back to I3C_SDR_SLEW_RATE after the
+/// host issues HDR_EXIT pattern.
+///
+/// This register field should not be programmed in I3C/DDR mode.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum I3CDdrSlewRate {
+    /// Min 20ns; Typ 40ns; Max 60ns
+    M20T40M60 = 0b000,
+    /// Min 12ns; Typ 24ns; Max 36ns
+    M12T24M36 = 0b001,
+    /// Min 6ns; Typ 12ns; Max 19ns
+    M6T12M19  = 0b010,
+    /// Min 4ns; Typ 8ns; Max 14ns
+    M4T8M14   = 0b011,
+    /// Min 2ns; Typ 4ns; Max 8ns
+    M2T4M8    = 0b100,
+    /// Max 2ns
+    M2        = 0b101,
+}
+
+impl Bitfield for I3CDdrSlewRate {
+    const BITMASK: u8 = 0b0011_1000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG1;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 3
+    }
+}
+
+/// Controls slew rate for output pin 14 in I3CSM SDR protocol.
+/// After device reset, I2C_SLEW_RATE is used by default. If I3CSM feature is
+/// enabled, the device automatically switches to use I3C_SDR_SLEW_RATE
+/// after receiving 0x7E+W message (an I3CSM broadcast message).
+///
+/// This register field should not be programmed in I3C/DDR mode.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum I3CSdrSlewRate {
+    /// Min 20ns; Typ 40ns; Max 60ns
+    M20T40M60 = 0b000,
+    /// Min 12ns; Typ 24ns; Max 36ns
+    M12T24M36 = 0b001,
+    /// Min 6ns; Typ 12ns; Max 19ns
+    M6T12M19  = 0b010,
+    /// Min 4ns; Typ 8ns; Max 14ns
+    M4T8M14   = 0b011,
+    /// Min 2ns; Typ 4ns; Max 8ns
+    M2T4M8    = 0b100,
+    /// Max 2ns
+    M2        = 0b101,
+}
+
+impl Bitfield for I3CSdrSlewRate {
+    const BITMASK: u8 = 0b0000_0111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG1;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
+
+/// Controls slew rate for output pin 14 in I2C mode.
+/// After device reset, the I2C_SLEW_RATE is used by default. If the 1st write
+/// operation from host is an SPI transaction, the device automatically switches
+/// to SPI_SLEW_RATE. If I3CSM feature is enabled, the device automatically
+/// switches to I3C_SDR_SLEW_RATE after receiving 0x7E+W message (an I3C
+/// broadcast message).
+///
+/// This register field should not be programmed in I3C/DDR mode.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum I2CSlewRate {
+    /// Min 20ns; Typ 40ns; Max 60ns
+    M20T40M60 = 0b000,
+    /// Min 12ns; Typ 24ns; Max 36ns
+    M12T24M36 = 0b001,
+    /// Min 6ns; Typ 12ns; Max 19ns
+    M6T12M19  = 0b010,
+    /// Min 4ns; Typ 8ns; Max 14ns
+    M4T8M14   = 0b011,
+    /// Min 2ns; Typ 4ns; Max 8ns
+    M2T4M8    = 0b100,
+    /// Max 2ns
+    M2        = 0b101,
+}
+
+impl Bitfield for I2CSlewRate {
+    const BITMASK: u8 = 0b0011_1000;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG2;
+
+    fn bits(self) -> u8 {
+        (self as u8) << 3
+    }
+}
+
+/// Configure drive strength for all output pins in all modes (SPI3, SPI4, I2C,
+/// I3CSM) excluding pin 14.
+///
+/// This register field should not be programmed in I3C/DDR mode.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum AllSlewRate {
+    /// Min 20ns; Typ 40ns; Max 60ns
+    M20T40M60 = 0b000,
+    /// Min 12ns; Typ 24ns; Max 36ns
+    M12T24M36 = 0b001,
+    /// Min 6ns; Typ 12ns; Max 19ns
+    M6T12M19  = 0b010,
+    /// Min 4ns; Typ 8ns; Max 14ns
+    M4T8M14   = 0b011,
+    /// Min 2ns; Typ 4ns; Max 8ns
+    M2T4M8    = 0b100,
+    /// Max 2ns
+    M2        = 0b101,
+}
+
+impl Bitfield for SpiSlewRate {
+    const BITMASK: u8 = 0b0000_0111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG2;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
+
+/// Controls slew rate for output pin 14 in SPI 3-wire mode. In SPI 4-wire mode
+/// this register controls the slew rate of pin 1 as it is used as an output in
+/// SPI 4- wire mode only. After chip reset, the I2C_SLEW_RATE is used by
+/// default for pin 14 pin. If the 1st write operation from the host is an
+/// SPI3/4 transaction, the device automatically switches to SPI_SLEW_RATE.
+///
+/// This register field should not be programmed in I3C/DDR mode.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SpiSlewRate {
+    /// Min 20ns; Typ 40ns; Max 60ns
+    M20T40M60 = 0b000,
+    /// Min 12ns; Typ 24ns; Max 36ns
+    M12T24M36 = 0b001,
+    /// Min 6ns; Typ 12ns; Max 19ns
+    M6T12M19  = 0b010,
+    /// Min 4ns; Typ 8ns; Max 14ns
+    M4T8M14   = 0b011,
+    /// Min 2ns; Typ 4ns; Max 8ns
+    M2T4M8    = 0b100,
+    /// Max 2ns
+    M2        = 0b101,
+}
+
+impl Bitfield for AllSlewRate {
+    const BITMASK: u8 = 0b0000_0111;
+    type Reg = Bank0;
+    const REGISTER: Self::Reg = Self::Reg::DRIVE_CONFIG2;
+
+    fn bits(self) -> u8 {
+        self as u8
+    }
+}
