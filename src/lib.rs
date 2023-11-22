@@ -19,8 +19,7 @@ pub use accelerometer;
 use accelerometer::{
     error::Error as AccelerometerError,
     vector::{F32x3, I16x3},
-    Accelerometer,
-    RawAccelerometer,
+    Accelerometer, RawAccelerometer,
 };
 use config::{AccLpAvg, AccelDlpfBw, GyroLpFiltBw, SoftReset, TempDlpfBw};
 use embedded_hal::blocking::{
@@ -59,11 +58,7 @@ pub struct Icm42670<I2C> {
     address: Address,
 }
 
-impl<I2C, E> Icm42670<I2C>
-where
-    I2C: Write<Error = E> + WriteRead<Error = E>,
-    E: Debug,
-{
+impl<I2C> Icm42670<I2C> {
     /// Unique device identifiers for the ICM-42607 and ICM-42670
     ///
     /// The ICM-42607 is the mass-production version of the ICM-42670, and
@@ -73,8 +68,19 @@ where
         0x67, // ICM-42670
     ];
 
+    /// Return the raw interface to the underlying `I2C` instance
+    pub fn free(self) -> I2C {
+        self.i2c
+    }
+}
+
+impl<I2C, E> Icm42670<I2C>
+where
+    I2C: Write<Error = E> + WriteRead<Error = E>,
+    E: Debug,
+{
     /// Instantiate a new instance of the driver and initialize the device
-    pub fn new(i2c: I2C, address: Address) -> Result<Self, Error<E>> {
+    pub fn new_blocking(i2c: I2C, address: Address) -> Result<Self, Error<E>> {
         let mut me = Self { i2c, address };
 
         // Verify that the device has the correct ID before continuing. If the ID does
@@ -94,11 +100,6 @@ where
         me.set_power_mode(PowerMode::SixAxisLowNoise)?;
 
         Ok(me)
-    }
-
-    /// Return the raw interface to the underlying `I2C` instance
-    pub fn free(self) -> I2C {
-        self.i2c
     }
 
     /// Read the ID of the connected device
@@ -357,6 +358,243 @@ where
 
             self.write_reg(&BF::REGISTER, value)
         }
+    }
+}
+
+#[cfg(feature = "async")]
+impl<I2C> Icm42670<I2C>
+where
+    I2C: embedded_hal_async::i2c::I2c,
+{
+    /// Instantiate a new instance of the driver and initialize the device
+    pub async fn new(i2c: I2C, address: Address) -> Result<Self, Error<I2C::Error>> {
+        let mut me = Self { i2c, address };
+
+        // Verify that the device has the correct ID before continuing. If the ID does
+        // not match either of the expected values then it is likely the wrong chip is
+        // connected.
+        if !Self::DEVICE_IDS.contains(&me.device_id_async().await?) {
+            return Err(Error::SensorError(SensorError::BadChip));
+        }
+
+        // Make sure that any configuration has been restored to the default values when
+        // initializing the driver.
+        me.set_accel_range_async(AccelRange::default()).await?;
+        me.set_gyro_range_async(GyroRange::default()).await?;
+
+        // The IMU uses `PowerMode::Sleep` by default, which disables both the accel and
+        // gyro, so we enable them both during driver initialization.
+        me.set_power_mode_async(PowerMode::SixAxisLowNoise).await?;
+
+        Ok(me)
+    }
+
+    /// Read the ID of the connected device
+    pub async fn device_id_async(&mut self) -> Result<u8, Error<I2C::Error>> {
+        self.read_reg_async(&Bank0::WHO_AM_I).await
+    }
+
+    /// Perform a software-reset on the device
+    pub async fn soft_reset_async(&mut self) -> Result<(), Error<I2C::Error>> {
+        self.update_reg_async(&Bank0::SIGNAL_PATH_RESET, 0x10, 0b0001_0000).await
+    }
+
+    /// Return the normalized gyro data for each of the three axes
+    pub async fn gyro_norm_async(&mut self) -> Result<F32x3, Error<I2C::Error>> {
+        let range = self.gyro_range_async().await?;
+        let scale = range.scale_factor();
+
+        // Scale the raw Gyroscope data using the appropriate factor based on the
+        // configured range.
+        let raw = self.gyro_raw_async().await?;
+        let x = raw.x as f32 / scale;
+        let y = raw.y as f32 / scale;
+        let z = raw.z as f32 / scale;
+
+        Ok(F32x3::new(x, y, z))
+    }
+
+    /// Read the raw gyro data for each of the three axes
+    pub async fn gyro_raw_async(&mut self) -> Result<I16x3, Error<I2C::Error>> {
+        let x = self.read_reg_i16_async(&Bank0::GYRO_DATA_X1, &Bank0::GYRO_DATA_X0).await?;
+        let y = self.read_reg_i16_async(&Bank0::GYRO_DATA_Y1, &Bank0::GYRO_DATA_Y0).await?;
+        let z = self.read_reg_i16_async(&Bank0::GYRO_DATA_Z1, &Bank0::GYRO_DATA_Z0).await?;
+
+        Ok(I16x3::new(x, y, z))
+    }
+
+    /// Read the built-in temperature sensor and return the value in degrees
+    /// centigrade
+    pub async fn temperature_async(&mut self) -> Result<f32, Error<I2C::Error>> {
+        let raw = self.temperature_raw_async().await? as f32;
+        let deg = (raw / 128.0) + 25.0;
+
+        Ok(deg)
+    }
+
+    /// Read the raw data from the built-in temperature sensor
+    pub async fn temperature_raw_async(&mut self) -> Result<i16, Error<I2C::Error>> {
+        self.read_reg_i16_async(&Bank0::TEMP_DATA1, &Bank0::TEMP_DATA0).await
+    }
+
+    /// Return the currently configured power mode
+    pub async fn power_mode_async(&mut self) -> Result<PowerMode, Error<I2C::Error>> {
+        //  `GYRO_MODE` occupies bits 3:2 in the register
+        // `ACCEL_MODE` occupies bits 1:0 in the register
+        let bits = self.read_reg_async(&Bank0::PWR_MGMT0).await? & 0xF;
+        let mode = PowerMode::try_from(bits)?;
+
+        Ok(mode)
+    }
+
+    /// Set the power mode of the IMU
+    pub async fn set_power_mode_async(&mut self, mode: PowerMode) -> Result<(), Error<I2C::Error>> {
+        self.update_reg_async(&Bank0::PWR_MGMT0, mode.bits(), PowerMode::BITMASK).await
+    }
+
+    /// Return the currently configured accelerometer range
+    pub async fn accel_range_async(&mut self) -> Result<AccelRange, Error<I2C::Error>> {
+        // `ACCEL_UI_FS_SEL` occupies bits 6:5 in the register
+        let fs_sel = self.read_reg_async(&Bank0::ACCEL_CONFIG0).await? >> 5;
+        let range = AccelRange::try_from(fs_sel)?;
+
+        Ok(range)
+    }
+
+    /// Set the range of the accelerometer
+    pub async fn set_accel_range_async(&mut self, range: AccelRange) -> Result<(), Error<I2C::Error>> {
+        self.update_reg_async(&Bank0::ACCEL_CONFIG0, range.bits(), AccelRange::BITMASK).await
+    }
+
+    /// Return the currently configured gyroscope range
+    pub async fn gyro_range_async(&mut self) -> Result<GyroRange, Error<I2C::Error>> {
+        // `GYRO_UI_FS_SEL` occupies bits 6:5 in the register
+        let fs_sel = self.read_reg_async(&Bank0::GYRO_CONFIG0).await? >> 5;
+        let range = GyroRange::try_from(fs_sel)?;
+
+        Ok(range)
+    }
+
+    /// Set the range of the gyro
+    pub async fn set_gyro_range_async(&mut self, range: GyroRange) -> Result<(), Error<I2C::Error>> {
+        self.update_reg_async(&Bank0::GYRO_CONFIG0, range.bits(), GyroRange::BITMASK).await
+    }
+
+    /// Return the currently configured output data rate for the accelerometer
+    pub async fn accel_odr_async(&mut self) -> Result<AccelOdr, Error<I2C::Error>> {
+        // `ACCEL_ODR` occupies bits 3:0 in the register
+        let odr = self.read_reg_async(&Bank0::ACCEL_CONFIG0).await? & 0xF;
+        let odr = AccelOdr::try_from(odr)?;
+
+        Ok(odr)
+    }
+
+    /// Set the output data rate of the accelerometer
+    pub async fn set_accel_odr_async(&mut self, odr: AccelOdr) -> Result<(), Error<I2C::Error>> {
+        self.update_reg_async(&Bank0::ACCEL_CONFIG0, odr.bits(), AccelOdr::BITMASK).await
+    }
+
+    /// Return the currently configured output data rate for the gyroscope
+    pub async fn gyro_odr_async(&mut self) -> Result<GyroOdr, Error<I2C::Error>> {
+        // `GYRO_ODR` occupies bits 3:0 in the register
+        let odr = self.read_reg_async(&Bank0::GYRO_CONFIG0).await? & 0xF;
+        let odr = GyroOdr::try_from(odr)?;
+
+        Ok(odr)
+    }
+
+    /// Set the output data rate of the gyroscope
+    pub async fn set_gyro_odr_async(&mut self, odr: GyroOdr) -> Result<(), Error<I2C::Error>> {
+        self.update_reg_async(&Bank0::GYRO_CONFIG0, odr.bits(), GyroOdr::BITMASK).await
+    }
+
+    /// Read a register at the provided address.
+    async fn read_reg_async(&mut self, reg: &dyn Register) -> Result<u8, Error<I2C::Error>> {
+        let mut buffer = [0u8];
+        self.i2c
+            .write_read(self.address as u8, &[reg.addr()], &mut buffer)
+            .await
+            .map_err(|e| Error::BusError(e))?;
+
+        Ok(buffer[0])
+    }
+
+    /// Read two registers and combine them into a single value.
+    async fn read_reg_i16_async(
+        &mut self,
+        reg_hi: &dyn Register,
+        reg_lo: &dyn Register,
+    ) -> Result<i16, Error<I2C::Error>> {
+        let data_hi = self.read_reg_async(reg_hi).await?;
+        let data_lo = self.read_reg_async(reg_lo).await?;
+
+        let data = i16::from_be_bytes([data_hi, data_lo]);
+
+        Ok(data)
+    }
+
+    /// Set a register at the provided address to a given value.
+    async fn write_reg_async(&mut self, reg: &dyn Register, value: u8) -> Result<(), Error<I2C::Error>> {
+        if reg.read_only() {
+            Err(Error::SensorError(SensorError::WriteToReadOnly))
+        } else {
+            self.i2c
+                .write(self.address as u8, &[reg.addr(), value])
+                .await
+                .map_err(|e| Error::BusError(e))
+        }
+    }
+
+    /// Update the register at the provided address.
+    ///
+    /// Rather than overwriting any active bits in the register, we first read
+    /// in its current value and then update it accordingly using the given
+    /// value and mask before writing back the desired value.
+    async fn update_reg_async(
+        &mut self,
+        reg: &dyn Register,
+        value: u8,
+        mask: u8,
+    ) -> Result<(), Error<I2C::Error>> {
+        if reg.read_only() {
+            Err(Error::SensorError(SensorError::WriteToReadOnly))
+        } else {
+            let current = self.read_reg_async(reg).await?;
+            let value = (current & !mask) | (value & mask);
+
+            self.write_reg_async(reg, value).await
+        }
+    }
+    // RawAccelerometer - async versions
+
+    pub async fn accel_raw_async(&mut self) -> Result<I16x3, Error<I2C::Error>> {
+        let x = self.read_reg_i16_async(&Bank0::ACCEL_DATA_X1, &Bank0::ACCEL_DATA_X0).await?;
+        let y = self.read_reg_i16_async(&Bank0::ACCEL_DATA_Y1, &Bank0::ACCEL_DATA_Y0).await?;
+        let z = self.read_reg_i16_async(&Bank0::ACCEL_DATA_Z1, &Bank0::ACCEL_DATA_Z0).await?;
+
+        Ok(I16x3::new(x, y, z))
+    }
+
+    // Accelerometer - async versions
+    pub async fn accel_norm_async(&mut self) -> Result<F32x3, Error<I2C::Error>> {
+        let range = self.accel_range_async().await?;
+        let scale = range.scale_factor();
+
+        // Scale the raw Accelerometer data using the appropriate factor based on the
+        // configured range.
+        let raw = self.accel_raw_async().await?;
+        let x = raw.x as f32 / scale;
+        let y = raw.y as f32 / scale;
+        let z = raw.z as f32 / scale;
+
+        Ok(F32x3::new(x, y, z))
+    }
+
+    pub async fn sample_rate_async(&mut self) -> Result<f32, Error<I2C::Error>> {
+        let odr = self.accel_odr_async().await?;
+        let rate = odr.as_f32();
+
+        Ok(rate)
     }
 }
 
