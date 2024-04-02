@@ -23,10 +23,7 @@ use accelerometer::{
     RawAccelerometer,
 };
 use config::{AccLpAvg, AccelDlpfBw, GyroLpFiltBw, SoftReset, TempDlpfBw};
-use embedded_hal::blocking::{
-    delay::DelayUs,
-    i2c::{Write, WriteRead},
-};
+use embedded_hal::{delay::DelayNs, i2c::I2c};
 
 use crate::{
     config::Bitfield,
@@ -61,7 +58,7 @@ pub struct Icm42670<I2C> {
 
 impl<I2C, E> Icm42670<I2C>
 where
-    I2C: Write<Error = E> + WriteRead<Error = E>,
+    I2C: I2c<Error = E>,
     E: Debug,
 {
     /// Unique device identifiers for the ICM-42607 and ICM-42670
@@ -257,7 +254,7 @@ where
     #[allow(unused)]
     fn read_mreg(
         &mut self,
-        delay: &mut dyn DelayUs<u8>,
+        delay: &mut dyn DelayNs,
         bank: RegisterBank,
         reg: &dyn Register,
     ) -> Result<u8, Error<E>> {
@@ -287,7 +284,7 @@ where
     #[allow(unused)]
     fn write_mreg(
         &mut self,
-        delay: &mut dyn DelayUs<u8>,
+        delay: &mut dyn DelayNs,
         bank: RegisterBank,
         reg: &dyn Register,
         value: u8,
@@ -362,7 +359,7 @@ where
 
 impl<I2C, E> Accelerometer for Icm42670<I2C>
 where
-    I2C: Write<Error = E> + WriteRead<Error = E>,
+    I2C: I2c<Error = E>,
     E: Debug,
 {
     type Error = Error<E>;
@@ -391,7 +388,7 @@ where
 
 impl<I2C, E> RawAccelerometer<I16x3> for Icm42670<I2C>
 where
-    I2C: Write<Error = E> + WriteRead<Error = E>,
+    I2C: I2c<Error = E>,
     E: Debug,
 {
     type Error = Error<E>;
