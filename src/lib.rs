@@ -22,17 +22,27 @@ use accelerometer::{
     Accelerometer,
     RawAccelerometer,
 };
-use config::{AccLpAvg, AccelDlpfBw, GyroLpFiltBw, SoftReset, TempDlpfBw};
 use embedded_hal::{delay::DelayNs, i2c::I2c};
 
+pub use crate::{
+    config::{
+        AccLpAvg,
+        AccelDlpfBw,
+        AccelOdr,
+        AccelRange,
+        Address,
+        GyroLpFiltBw,
+        GyroOdr,
+        GyroRange,
+        PowerMode,
+        TempDlpfBw,
+    },
+    error::Error,
+};
 use crate::{
-    config::Bitfield,
+    config::{Bitfield, SoftReset},
     error::SensorError,
     register::{Bank0, Register, RegisterBank},
-};
-pub use crate::{
-    config::{AccelOdr, AccelRange, Address, GyroOdr, GyroRange, PowerMode},
-    error::Error,
 };
 
 mod config;
