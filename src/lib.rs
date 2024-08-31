@@ -19,14 +19,23 @@ pub use accelerometer;
 use accelerometer::{
     error::Error as AccelerometerError,
     vector::{F32x3, I16x3},
-    Accelerometer, RawAccelerometer,
+    Accelerometer,
+    RawAccelerometer,
 };
 use embedded_hal::{delay::DelayNs, i2c::I2c};
 
 pub use crate::{
     config::{
-        AccLpAvg, AccelDlpfBw, AccelOdr, AccelRange, Address, GyroLpFiltBw, GyroOdr, GyroRange,
-        PowerMode, TempDlpfBw,
+        AccLpAvg,
+        AccelDlpfBw,
+        AccelOdr,
+        AccelRange,
+        Address,
+        GyroLpFiltBw,
+        GyroOdr,
+        GyroRange,
+        PowerMode,
+        TempDlpfBw,
     },
     error::Error,
 };
