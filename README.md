@@ -21,7 +21,7 @@ Examples demonstrating how to use this driver can be found in the [icm42670-exam
 ## Resources
 
 - [ICM-42670 Product Page](https://invensense.tdk.com/products/motion-tracking/6-axis/icm-42670-P/)
-- [ICM-42670 Datasheet](https://3cfeqx1hf82y3xcoull08ihx-wpengine.netdna-ssl.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf)
+- [ICM-42670 Datasheet]([https://3cfeqx1hf82y3xcoull08ihx-wpengine.netdna-ssl.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf](https://invensense.tdk.com/wp-content/uploads/2021/07/ds-000451_icm-42670-p-datasheet.pdf)
 
 ## License
 
